@@ -285,6 +285,13 @@ h1 {
   background: var(--surface);
 }
 
+.compact-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
 .item-link {
   border-left-color: var(--teal);
 }
@@ -317,6 +324,59 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.compact-actions {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.compact-actions .quiet-button,
+.compact-actions .icon-button {
+  min-height: 40px;
+}
+
+.compact-actions .icon-button {
+  width: 40px;
+}
+
+.card-summary-button {
+  display: grid;
+  min-width: 0;
+  width: 100%;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.card-summary-button:focus-visible {
+  outline: 3px solid rgba(31, 122, 131, 0.22);
+  outline-offset: 4px;
+}
+
+.card-summary {
+  display: block;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-summary-button .file-name,
+.card-summary-button .file-meta,
+.card-summary-button .link-title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .link-title {
@@ -432,8 +492,8 @@ h1 {
   inset: 0;
   z-index: 10;
   display: grid;
-  place-items: center;
-  padding: 14px;
+  place-items: stretch;
+  padding: 8px;
   background: rgba(23, 32, 38, 0.48);
 }
 
@@ -486,8 +546,8 @@ h1 {
 .preview-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  width: min(100%, 980px);
-  height: min(92vh, 820px);
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -500,6 +560,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 12px;
   border-bottom: 1px solid var(--line);
@@ -575,6 +636,50 @@ h1 {
   width: min(100%, 560px);
 }
 
+.item-detail-body {
+  display: block;
+  padding: 0;
+  background: var(--paper);
+}
+
+.detail-content {
+  min-height: 100%;
+  padding: 16px;
+}
+
+.detail-url {
+  display: block;
+  color: var(--teal-dark);
+  font-size: 1.45rem;
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.detail-text {
+  min-height: 100%;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.detail-text a {
+  color: var(--teal-dark);
+  font-weight: 750;
+}
+
+.detail-meta {
+  margin: 14px 0 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 @media (min-width: 720px) {
   .shell {
     padding-top: 36px;
@@ -583,6 +688,14 @@ h1 {
   .file-card {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
+  }
+
+  .detail-content {
+    padding: 24px;
+  }
+
+  .detail-url {
+    font-size: 2rem;
   }
 
   .dump-form {

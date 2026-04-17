@@ -1,4 +1,12 @@
-# Dumpy
+<p align="center">
+  <img src="https://raw.githubusercontent.com/SproutSeeds/dumpy/main/public/dumpy-sidescroll-full.gif" alt="Dumpy animation: Dump it. No matter the load. Dumpy takes the pressure off." width="520">
+</p>
+
+<h1 align="center">Dumpy</h1>
+
+<p align="center">
+  Dump it. No matter the load. Dumpy takes the pressure off.
+</p>
 
 A tiny file, link, and text drop for a Tailscale tailnet.
 

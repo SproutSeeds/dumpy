@@ -13,6 +13,7 @@ const previewTitle = document.querySelector("#previewTitle");
 const previewBody = document.querySelector("#previewBody");
 const previewClose = document.querySelector("#previewClose");
 const previewDownload = document.querySelector("#previewDownload");
+const previewFooter = document.querySelector(".preview-footer");
 const deletedSpace = document.querySelector("#deletedSpace");
 const deletedList = document.querySelector("#deletedList");
 const deletedCount = document.querySelector("#deletedCount");
@@ -227,65 +228,46 @@ function renderDeletedItems(items) {
 }
 
 function renderFile(file) {
-  const item = document.createElement("li");
-  item.className = "file-card item-file";
-
-  const main = document.createElement("div");
-  main.className = "file-main";
-
-  const name = document.createElement("span");
-  name.className = "file-name";
-  name.textContent = file.name;
-
-  const meta = document.createElement("div");
-  meta.className = "file-meta";
-  meta.textContent = `${formatSize(file.size)} · ${formatDate(file.uploadedAt)}`;
-
-  main.append(name, meta);
-
-  const actions = document.createElement("div");
-  actions.className = "file-actions";
-
-  const preview = document.createElement("button");
-  preview.className = "quiet-button";
-  preview.type = "button";
-  preview.textContent = "Preview";
-  preview.addEventListener("click", () => openPreview(file));
-
-  const download = document.createElement("a");
-  download.className = "download-link";
-  download.href = file.href;
-  download.textContent = "Download";
-
   const copy = document.createElement("button");
-  copy.className = "copy-button";
+  copy.className = "icon-button";
   copy.type = "button";
-  copy.textContent = "Copy link";
+  copy.setAttribute("aria-label", "Copy file link");
+  copy.innerHTML = copyIconSvg();
   copy.addEventListener("click", () => copyLink(file.href));
 
   const remove = createIconButton("Delete", xIconSvg());
   remove.classList.add("danger-icon");
   remove.addEventListener("click", () => softDeleteItem(file));
 
-  actions.append(preview, download, copy, remove);
-  item.append(main, actions);
-  return item;
+  return renderCompactCard({
+    item: file,
+    cardClass: "item-file",
+    titleClass: "file-name",
+    title: file.name,
+    meta: `${formatSize(file.size)} · ${formatDate(file.uploadedAt)}`,
+    summary: "File",
+    onOpen: () => openFilePreview(file),
+    actions: [copy, remove]
+  });
 }
 
-async function openPreview(file) {
-  previewTitle.textContent = file.name || "Preview";
-  previewDownload.href = file.href;
-  previewDownload.setAttribute("download", file.name || "");
+function openPreviewShell(title, bodyClass = "preview-body") {
+  previewTitle.textContent = title || "Preview";
   previewBody.replaceChildren();
-  previewBody.className = "preview-body";
+  previewBody.className = bodyClass;
+  previewFooter.replaceChildren();
+  previewOverlay.hidden = false;
+  document.body.classList.add("is-previewing");
+  previewPanel.focus?.();
+}
+
+async function openFilePreview(file) {
+  openPreviewShell(file.name || "Preview");
+  previewFooter.append(createCopyFileLinkButton(file), createDownloadLink(file), createDeleteButton(file));
 
   const previewHref = file.previewHref || file.href;
   const mimeType = file.mimeType || "";
   const kind = previewKind(mimeType, file.name || "");
-
-  previewOverlay.hidden = false;
-  document.body.classList.add("is-previewing");
-  previewPanel.focus?.();
 
   if (kind === "image") {
     const image = document.createElement("img");
@@ -347,6 +329,7 @@ function closePreview() {
   previewOverlay.hidden = true;
   document.body.classList.remove("is-previewing");
   previewBody.replaceChildren();
+  previewFooter.replaceChildren(previewDownload);
   previewDownload.removeAttribute("download");
   previewDownload.href = "#";
 }
@@ -385,28 +368,6 @@ function previewKind(mimeType, name) {
 }
 
 function renderLink(link) {
-  const item = document.createElement("li");
-  item.className = "file-card item-link";
-
-  const main = document.createElement("div");
-  main.className = "file-main";
-
-  const anchor = document.createElement("a");
-  anchor.className = "link-title";
-  anchor.href = link.url;
-  anchor.target = "_blank";
-  anchor.rel = "noreferrer";
-  anchor.textContent = link.label || link.url;
-
-  const meta = document.createElement("div");
-  meta.className = "file-meta";
-  meta.textContent = formatDate(link.uploadedAt);
-
-  main.append(anchor, meta);
-
-  const actions = document.createElement("div");
-  actions.className = "file-actions";
-
   const copy = createIconButton("Copy link", copyIconSvg());
   copy.addEventListener("click", () => copyText(link.url));
 
@@ -414,31 +375,19 @@ function renderLink(link) {
   remove.classList.add("danger-icon");
   remove.addEventListener("click", () => softDeleteItem(link));
 
-  actions.append(copy, remove);
-  item.append(main, actions);
-  return item;
+  return renderCompactCard({
+    item: link,
+    cardClass: "item-link",
+    titleClass: "link-title",
+    title: link.label || link.url,
+    meta: formatDate(link.uploadedAt),
+    summary: link.url,
+    onOpen: () => openLinkDetail(link),
+    actions: [copy, remove]
+  });
 }
 
 function renderText(textItem) {
-  const item = document.createElement("li");
-  item.className = "file-card item-text";
-
-  const main = document.createElement("div");
-  main.className = "file-main";
-
-  const text = document.createElement("p");
-  text.className = "text-blob";
-  appendLinkifiedText(text, textItem.text || "");
-
-  const meta = document.createElement("div");
-  meta.className = "file-meta";
-  meta.textContent = formatDate(textItem.uploadedAt);
-
-  main.append(text, meta);
-
-  const actions = document.createElement("div");
-  actions.className = "file-actions";
-
   const copy = createIconButton("Copy text", copyIconSvg());
   copy.addEventListener("click", () => copyText(textItem.text || ""));
 
@@ -446,9 +395,95 @@ function renderText(textItem) {
   remove.classList.add("danger-icon");
   remove.addEventListener("click", () => softDeleteItem(textItem));
 
-  actions.append(copy, remove);
-  item.append(main, actions);
-  return item;
+  return renderCompactCard({
+    item: textItem,
+    cardClass: "item-text",
+    titleClass: "file-name",
+    title: itemTitle(textItem),
+    meta: formatDate(textItem.uploadedAt),
+    summary: textItem.text || "Text",
+    onOpen: () => openTextDetail(textItem),
+    actions: [copy, remove]
+  });
+}
+
+function renderCompactCard({ item, cardClass, titleClass, title, meta, summary, onOpen, actions }) {
+  const card = document.createElement("li");
+  card.className = `file-card compact-card ${cardClass}`;
+
+  const summaryButton = document.createElement("button");
+  summaryButton.className = "card-summary-button";
+  summaryButton.type = "button";
+  summaryButton.setAttribute("aria-label", `Open ${itemTitle(item)}`);
+  summaryButton.addEventListener("click", onOpen);
+
+  const titleNode = document.createElement("span");
+  titleNode.className = titleClass;
+  titleNode.textContent = title || itemTitle(item);
+
+  const metaNode = document.createElement("span");
+  metaNode.className = "file-meta";
+  metaNode.textContent = meta;
+
+  const summaryNode = document.createElement("span");
+  summaryNode.className = "card-summary";
+  summaryNode.textContent = summary || "";
+
+  summaryButton.append(titleNode, metaNode, summaryNode);
+
+  const controls = document.createElement("div");
+  controls.className = "file-actions compact-actions";
+
+  const open = document.createElement("button");
+  open.className = "quiet-button";
+  open.type = "button";
+  open.textContent = "Open";
+  open.addEventListener("click", onOpen);
+
+  controls.append(open, ...actions);
+  card.append(summaryButton, controls);
+  return card;
+}
+
+function openLinkDetail(link) {
+  openPreviewShell(itemTitle(link), "preview-body item-detail-body");
+
+  const content = document.createElement("article");
+  content.className = "detail-content";
+
+  const anchor = document.createElement("a");
+  anchor.className = "detail-url";
+  anchor.href = link.url;
+  anchor.target = "_blank";
+  anchor.rel = "noreferrer";
+  anchor.textContent = link.url;
+
+  const meta = document.createElement("p");
+  meta.className = "detail-meta";
+  meta.textContent = formatDate(link.uploadedAt);
+
+  content.append(anchor, meta);
+  previewBody.append(content);
+  previewFooter.append(createOpenLink(link), createCopyTextButton("Copy link", link.url), createDeleteButton(link));
+}
+
+function openTextDetail(textItem) {
+  openPreviewShell(itemTitle(textItem), "preview-body item-detail-body");
+
+  const content = document.createElement("article");
+  content.className = "detail-content";
+
+  const text = document.createElement("div");
+  text.className = "detail-text";
+  appendLinkifiedText(text, textItem.text || "");
+
+  const meta = document.createElement("p");
+  meta.className = "detail-meta";
+  meta.textContent = formatDate(textItem.uploadedAt);
+
+  content.append(text, meta);
+  previewBody.append(content);
+  previewFooter.append(createCopyTextButton("Copy text", textItem.text || ""), createDeleteButton(textItem));
 }
 
 function renderDeletedItem(deletedItem) {
@@ -537,6 +572,47 @@ function createIconButton(label, svg) {
   button.type = "button";
   button.setAttribute("aria-label", label);
   button.innerHTML = svg;
+  return button;
+}
+
+function createDownloadLink(file) {
+  const link = document.createElement("a");
+  link.className = "download-link";
+  link.href = file.href;
+  link.textContent = "Download";
+  link.setAttribute("download", file.name || "");
+  return link;
+}
+
+function createOpenLink(linkItem) {
+  const link = document.createElement("a");
+  link.className = "download-link";
+  link.href = linkItem.url;
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  link.textContent = "Open link";
+  return link;
+}
+
+function createCopyTextButton(label, value) {
+  const button = createIconButton(label, copyIconSvg());
+  button.addEventListener("click", () => copyText(value));
+  return button;
+}
+
+function createCopyFileLinkButton(file) {
+  const button = createIconButton("Copy file link", copyIconSvg());
+  button.addEventListener("click", () => copyLink(file.href));
+  return button;
+}
+
+function createDeleteButton(item) {
+  const button = createIconButton("Delete", xIconSvg());
+  button.classList.add("danger-icon");
+  button.addEventListener("click", () => {
+    closePreview();
+    softDeleteItem(item);
+  });
   return button;
 }
 
