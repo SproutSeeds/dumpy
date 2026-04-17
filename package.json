@@ -1,0 +1,40 @@
+{
+  "name": "dumpy-files",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Dumpy is a tiny Tailnet file, link, and text drop.",
+  "bin": {
+    "dumpy-files": "./server.mjs"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "check": "node --check server.mjs && node --check public/app.js"
+  },
+  "files": [
+    "server.mjs",
+    "public",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "tailscale",
+    "file-drop",
+    "file-sharing",
+    "local-first",
+    "tailnet"
+  ],
+  "author": "Cody Mitchell",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SproutSeeds/dumpy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SproutSeeds/dumpy/issues"
+  },
+  "homepage": "https://github.com/SproutSeeds/dumpy#readme",
+  "engines": {
+    "node": ">=20"
+  }
+}

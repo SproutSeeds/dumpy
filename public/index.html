@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dumpy</title>
+    <link rel="icon" href="/dumpy-mascot.png?v=3">
+    <link rel="apple-touch-icon" href="/dumpy-mascot.png?v=3">
+    <link rel="stylesheet" href="/styles.css?v=7">
+    <script src="/app.js?v=7" type="module"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="mast">
+        <div class="mascot">
+          <img
+            class="mark"
+            alt="Dirty buck-toothed file mascot"
+            width="64"
+            height="64"
+            src="/dumpy-mascot.png?v=3"
+          >
+          <span class="bubble">Oopsie!</span>
+        </div>
+        <div>
+          <h1>Dumpy</h1>
+        </div>
+      </header>
+
+      <section class="quick-dump">
+        <form class="dump-form" id="dumpForm">
+          <label class="sr-only" for="dumpInput">Link or text</label>
+          <textarea id="dumpInput" rows="4" placeholder="Paste a link or text"></textarea>
+          <button class="dump-button" type="submit">Dump</button>
+        </form>
+      </section>
+
+      <section class="drop-zone" id="dropZone">
+        <input id="fileInput" class="file-input" type="file" multiple aria-hidden="true" tabindex="-1">
+        <button class="choose-button" id="chooseButton" type="button">Choose files</button>
+        <p class="drop-title">Drop files here</p>
+        <p class="drop-note">They land here for every device.</p>
+        <div class="progress" aria-hidden="true">
+          <span id="progressBar"></span>
+        </div>
+      </section>
+
+      <section class="toolbar" aria-live="polite">
+        <p id="statusText">Ready.</p>
+        <button class="quiet-button" id="refreshButton" type="button">Refresh</button>
+      </section>
+
+      <section>
+        <ul class="file-list" id="fileList"></ul>
+      </section>
+
+      <section class="deleted-space" id="deletedSpace" hidden>
+        <div class="deleted-head">
+          <h2>Recently deleted <span id="deletedCount"></span></h2>
+          <p>Held for 30 days.</p>
+        </div>
+        <ul class="file-list deleted-list" id="deletedList"></ul>
+      </section>
+    </main>
+
+    <section class="preview-overlay" id="previewOverlay" role="dialog" aria-modal="true" aria-labelledby="previewTitle" hidden>
+      <div class="preview-panel" tabindex="-1">
+        <header class="preview-header">
+          <h2 id="previewTitle">Preview</h2>
+          <button class="icon-button preview-close" id="previewClose" type="button" aria-label="Close preview">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12"></path>
+              <path d="M18 6L6 18"></path>
+            </svg>
+          </button>
+        </header>
+        <div class="preview-body" id="previewBody"></div>
+        <footer class="preview-footer">
+          <a class="download-link" id="previewDownload" href="#">Download</a>
+        </footer>
+      </div>
+    </section>
+
+    <section class="confirm-overlay" id="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" hidden>
+      <div class="confirm-panel" tabindex="-1">
+        <h2 id="confirmTitle">Ya sure?</h2>
+        <p id="confirmDetail"></p>
+        <div class="confirm-actions">
+          <button class="quiet-button" id="confirmNo" type="button">No</button>
+          <button class="dump-button" id="confirmYes" type="button">Yes</button>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>
