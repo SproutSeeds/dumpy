@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Dumpy is a tiny Tailnet file, link, and text drop.",
   "bin": {
-    "dumpy-files": "./server.mjs"
+    "dumpy-files": "server.mjs"
   },
   "scripts": {
     "start": "node server.mjs",
