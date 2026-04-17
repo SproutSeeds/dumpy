@@ -189,6 +189,9 @@ h1 {
 .quiet-button,
 .download-link,
 .copy-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 44px;
   border-radius: 8px;
   border: 1px solid var(--teal-dark);
@@ -218,6 +221,12 @@ h1 {
   color: var(--teal-dark);
   background: var(--surface);
   font-weight: 700;
+}
+
+.home-screen-button {
+  border-color: #c9a235;
+  background: #fff8dc;
+  color: #6f5213;
 }
 
 .drop-title {
@@ -428,9 +437,6 @@ h1 {
 }
 
 .download-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   padding: 0 14px;
   color: #ffffff;
   background: var(--teal);

@@ -368,6 +368,8 @@ function previewKind(mimeType, name) {
 }
 
 function renderLink(link) {
+  const chrome = createChromeButton(link);
+
   const copy = createIconButton("Copy link", copyIconSvg());
   copy.addEventListener("click", () => copyText(link.url));
 
@@ -383,17 +385,25 @@ function renderLink(link) {
     meta: formatDate(link.uploadedAt),
     summary: link.url,
     onOpen: () => openLinkDetail(link),
-    actions: [copy, remove]
+    actions: [chrome, copy, remove]
   });
 }
 
 function renderText(textItem) {
+  const firstLink = firstLinkInText(textItem.text || "");
+  const actions = [];
+  if (firstLink) {
+    actions.push(createChromeButton(homeScreenTargetForUrl(firstLink)));
+  }
+
   const copy = createIconButton("Copy text", copyIconSvg());
   copy.addEventListener("click", () => copyText(textItem.text || ""));
+  actions.push(copy);
 
   const remove = createIconButton("Delete", xIconSvg());
   remove.classList.add("danger-icon");
   remove.addEventListener("click", () => softDeleteItem(textItem));
+  actions.push(remove);
 
   return renderCompactCard({
     item: textItem,
@@ -403,7 +413,7 @@ function renderText(textItem) {
     meta: formatDate(textItem.uploadedAt),
     summary: textItem.text || "Text",
     onOpen: () => openTextDetail(textItem),
-    actions: [copy, remove]
+    actions
   });
 }
 
@@ -464,7 +474,7 @@ function openLinkDetail(link) {
 
   content.append(anchor, meta);
   previewBody.append(content);
-  previewFooter.append(createOpenLink(link), createCopyTextButton("Copy link", link.url), createDeleteButton(link));
+  previewFooter.append(createChromeButton(link), createOpenLink(link), createCopyTextButton("Copy link", link.url), createDeleteButton(link));
 }
 
 function openTextDetail(textItem) {
@@ -483,6 +493,10 @@ function openTextDetail(textItem) {
 
   content.append(text, meta);
   previewBody.append(content);
+  const firstLink = firstLinkInText(textItem.text || "");
+  if (firstLink) {
+    previewFooter.append(createChromeButton(homeScreenTargetForUrl(firstLink)));
+  }
   previewFooter.append(createCopyTextButton("Copy text", textItem.text || ""), createDeleteButton(textItem));
 }
 
@@ -566,6 +580,33 @@ function normalizeHref(value) {
   return /^[a-z][a-z\d+.-]*:\/\//i.test(value) ? value : `https://${value}`;
 }
 
+function firstLinkInText(value) {
+  const match = String(value || "").match(/\b((?:https?:\/\/|www\.)[^\s<>"']+|(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?::\d+)?(?:\/[^\s<>"']*)?)/i);
+  if (!match) return "";
+  const raw = match[1] || match[0];
+  const trailing = raw.match(/[),.!?:;]+$/)?.[0] || "";
+  const clean = trailing ? raw.slice(0, -trailing.length) : raw;
+  return normalizeHref(clean);
+}
+
+function homeScreenTargetForUrl(url) {
+  return {
+    kind: "link",
+    label: labelForHref(url),
+    url
+  };
+}
+
+function labelForHref(value) {
+  try {
+    const url = new URL(normalizeHref(value));
+    const pathLabel = url.pathname === "/" ? "" : url.pathname;
+    return `${url.hostname}${pathLabel}`.slice(0, 220);
+  } catch {
+    return "Saved link";
+  }
+}
+
 function createIconButton(label, svg) {
   const button = document.createElement("button");
   button.className = "icon-button";
@@ -592,6 +633,46 @@ function createOpenLink(linkItem) {
   link.rel = "noreferrer";
   link.textContent = "Open link";
   return link;
+}
+
+function createChromeButton(linkItem) {
+  const url = firstLinkInText(linkItem.url || "") || normalizeHref(linkItem.url || "");
+  const link = document.createElement("a");
+  link.className = "quiet-button home-screen-button";
+  link.href = chromeHrefForUrl(url);
+  link.rel = "noreferrer";
+  link.textContent = "Browser";
+  link.setAttribute("aria-label", "Open this link in Chrome");
+
+  link.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard?.writeText(url);
+      setStatus("Opening Chrome. Link copied.");
+    } catch {
+      setStatus("Opening Chrome.");
+    }
+  });
+
+  return link;
+}
+
+function chromeHrefForUrl(value) {
+  try {
+    const url = new URL(normalizeHref(value));
+    const rest = `${url.host}${url.pathname}${url.search}${url.hash}`;
+
+    if (url.protocol === "https:") {
+      return `googlechromes://${rest}`;
+    }
+
+    if (url.protocol === "http:") {
+      return `googlechrome://${rest}`;
+    }
+  } catch {
+    return value;
+  }
+
+  return value;
 }
 
 function createCopyTextButton(label, value) {
