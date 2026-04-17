@@ -8,6 +8,10 @@
   Dump it. No matter the load. Dumpy takes the pressure off.
 </p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/SproutSeeds/dumpy/main/public/dumpy-ui.png?v=0.1.5" alt="Dumpy web app showing a text dump box and file drop zone." width="760">
+</p>
+
 A tiny file, link, and text drop for a Tailscale tailnet.
 
 ## Install
