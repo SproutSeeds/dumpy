@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 40 360 410" role="img" aria-label="Dumpy bashful-shy mascot">
+  <style>
+    svg { color-scheme: only light; }
+    * { forced-color-adjust: none; }
+  </style>
+  <rect width="512" height="512" fill="none"/>
+  
+  <path d="M126 58h196l74 74v290H126z" fill="#efe6d0" stroke="#4f4134" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M322 58v74h74z" fill="#d8c9aa" stroke="#4f4134" stroke-width="16" stroke-linejoin="round"/>
+  
+  <path d="M180 136c42-15 78-19 118-13" fill="none" stroke="#9b8a73" stroke-width="8" stroke-linecap="round" opacity=".72"/>
+  <path d="M166 178c35-10 68-12 104-8" fill="none" stroke="#9b8a73" stroke-width="7" stroke-linecap="round" opacity=".62"/>
+  <path d="M285 180c18 2 34 6 51 12" fill="none" stroke="#9b8a73" stroke-width="7" stroke-linecap="round" opacity=".48"/>
+  <path d="M156 364c52 10 102 11 154 1" fill="none" stroke="#cbbda1" stroke-width="7" stroke-linecap="round" opacity=".72"/>
+  <path d="M176 393c38 6 76 6 116 0" fill="none" stroke="#cbbda1" stroke-width="6" stroke-linecap="round" opacity=".55"/>
+
+
+  <g>
+    
+  <ellipse cx="196" cy="307" rx="27" ry="14" fill="#f7c0bb" opacity=".85"/>
+  <ellipse cx="322" cy="307" rx="27" ry="14" fill="#f7c0bb" opacity=".85"/>
+
+    
+  <ellipse cx="214" cy="264" rx="18" ry="28" fill="#172026"/>
+  <circle cx="220.3" cy="253.92" r="6" fill="#ffffff"/>
+
+    
+  <path d="M292 271L338 263" fill="none" stroke="#172026" stroke-width="12" stroke-linecap="round"/>
+
+    
+  <path d="M228 326c24 25 60 25 84 0" fill="none" stroke="#4a2521" stroke-width="12" stroke-linecap="round"/>
+  <path d="M260 327h26v34h-26z" fill="#fff8dc" stroke="#4a2521" stroke-width="8" stroke-linejoin="round"/>
+
+  </g>
+</svg>

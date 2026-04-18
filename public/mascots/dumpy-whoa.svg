@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 40 360 410" role="img" aria-label="Dumpy whoa mascot">
+  <style>
+    svg { color-scheme: only light; }
+    * { forced-color-adjust: none; }
+  </style>
+  <rect width="512" height="512" fill="none"/>
+  
+  <path d="M126 58h196l74 74v290H126z" fill="#efe6d0" stroke="#4f4134" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M322 58v74h74z" fill="#d8c9aa" stroke="#4f4134" stroke-width="16" stroke-linejoin="round"/>
+  
+  <path d="M180 136c42-15 78-19 118-13" fill="none" stroke="#9b8a73" stroke-width="8" stroke-linecap="round" opacity=".72"/>
+  <path d="M166 178c35-10 68-12 104-8" fill="none" stroke="#9b8a73" stroke-width="7" stroke-linecap="round" opacity=".62"/>
+  <path d="M285 180c18 2 34 6 51 12" fill="none" stroke="#9b8a73" stroke-width="7" stroke-linecap="round" opacity=".48"/>
+  <path d="M156 364c52 10 102 11 154 1" fill="none" stroke="#cbbda1" stroke-width="7" stroke-linecap="round" opacity=".72"/>
+  <path d="M176 393c38 6 76 6 116 0" fill="none" stroke="#cbbda1" stroke-width="6" stroke-linecap="round" opacity=".55"/>
+
+
+  <g>
+    
+  <ellipse cx="214" cy="262" rx="24" ry="36" fill="#172026"/>
+  <circle cx="222.4" cy="249.04" r="6" fill="#ffffff"/>
+
+    
+  <ellipse cx="314" cy="262" rx="24" ry="36" fill="#172026"/>
+  <circle cx="322.4" cy="249.04" r="6" fill="#ffffff"/>
+
+    
+  <ellipse cx="266" cy="329" rx="22" ry="28" fill="#4a2521"/>
+  <ellipse cx="266" cy="335" rx="12" ry="14" fill="#7e3a35" opacity=".72"/>
+
+  </g>
+</svg>

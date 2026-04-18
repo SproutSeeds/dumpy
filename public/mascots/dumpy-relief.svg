@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 40 360 410" role="img" aria-label="Dumpy relief mascot">
+  <style>
+    svg { color-scheme: only light; }
+    * { forced-color-adjust: none; }
+  </style>
+  <rect width="512" height="512" fill="none"/>
+  
+  <path d="M126 58h196l74 74v290H126z" fill="#efe6d0" stroke="#4f4134" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M322 58v74h74z" fill="#d8c9aa" stroke="#4f4134" stroke-width="16" stroke-linejoin="round"/>
+  
+  <path d="M180 136c42-15 78-19 118-13" fill="none" stroke="#9b8a73" stroke-width="8" stroke-linecap="round" opacity=".72"/>
+  <path d="M166 178c35-10 68-12 104-8" fill="none" stroke="#9b8a73" stroke-width="7" stroke-linecap="round" opacity=".62"/>
+  <path d="M285 180c18 2 34 6 51 12" fill="none" stroke="#9b8a73" stroke-width="7" stroke-linecap="round" opacity=".48"/>
+  <path d="M156 364c52 10 102 11 154 1" fill="none" stroke="#cbbda1" stroke-width="7" stroke-linecap="round" opacity=".72"/>
+  <path d="M176 393c38 6 76 6 116 0" fill="none" stroke="#cbbda1" stroke-width="6" stroke-linecap="round" opacity=".55"/>
+
+
+  <g>
+    
+  <path d="M188 265c15 12 31 12 46 0" fill="none" stroke="#172026" stroke-width="12" stroke-linecap="round"/>
+
+    
+  <path d="M292 265c15 12 31 12 46 0" fill="none" stroke="#172026" stroke-width="12" stroke-linecap="round"/>
+
+    
+  <path d="M222 318c20 40 76 42 100 0" fill="#f2b2aa" stroke="#4a2521" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M258 323h30v32h-30z" fill="#fff8dc" stroke="#4a2521" stroke-width="7" stroke-linejoin="round"/>
+
+  </g>
+</svg>

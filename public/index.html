@@ -6,22 +6,22 @@
     <title>Dumpy</title>
     <link rel="icon" href="/dumpy-mascot.png?v=3">
     <link rel="apple-touch-icon" href="/dumpy-mascot.png?v=3">
-    <link rel="stylesheet" href="/styles.css?v=13">
-    <script src="/app.js?v=13" type="module"></script>
+    <link rel="stylesheet" href="/styles.css?v=26">
+    <script src="/app.js?v=26" type="module"></script>
   </head>
   <body>
     <main class="shell">
       <header class="mast">
-        <div class="mascot">
+        <button class="mascot" id="mascotButton" type="button" data-face="idle" aria-label="Refresh dumps with Dumpy">
           <img
             class="mark"
             alt="Dirty buck-toothed file mascot"
             width="64"
             height="64"
-            src="/dumpy-mascot.png?v=3"
+            src="/mascots/dumpy-idle.svg?v=2"
           >
           <span class="bubble">Oopsie!</span>
-        </div>
+        </button>
         <div>
           <h1>Dumpy</h1>
         </div>
@@ -35,24 +35,56 @@
         </form>
       </section>
 
+      <section class="party-tools" aria-label="Dump party tools">
+        <form class="party-form" id="partyForm">
+          <label class="sr-only" for="partyName">New dump party</label>
+          <input id="partyName" type="text" maxlength="120" placeholder="Name a dump party">
+          <button class="quiet-button" type="submit">Make party</button>
+        </form>
+        <div class="active-party">
+          <span>Dumping into <strong id="activePartyLabel">Loose Dumps</strong></span>
+          <button class="quiet-button" id="clearPartyButton" type="button" hidden>Use Loose Dumps</button>
+        </div>
+      </section>
+
       <section class="drop-zone" id="dropZone">
         <input id="fileInput" class="file-input" type="file" multiple aria-hidden="true" tabindex="-1">
-        <button class="choose-button" id="chooseButton" type="button">Choose files</button>
-        <p class="drop-title">Drop files here</p>
-        <p class="drop-note">They land here for every device.</p>
+        <input id="folderInput" class="file-input" type="file" webkitdirectory multiple aria-hidden="true" tabindex="-1">
+        <button class="choose-button" id="chooseButton" type="button">Choose dumpfile</button>
+        <button class="quiet-button folder-button" id="chooseFolderButton" type="button">Choose dump folder</button>
+        <p class="drop-title">Dump files here</p>
+        <p class="drop-note">Every device gets the dump.</p>
         <div class="progress" aria-hidden="true">
           <span id="progressBar"></span>
         </div>
       </section>
 
+      <section class="party-section" id="partySection" hidden>
+        <div class="section-head">
+          <div>
+            <h2>Dump Parties <span id="partyCount"></span></h2>
+            <p>Pick one to aim the dump box and file drop there.</p>
+          </div>
+          <button class="quiet-button section-toggle flush-toggle" id="partyToggle" type="button" aria-controls="partyList" aria-expanded="true" aria-label="Collapse dump parties" title="Collapse dump parties"></button>
+        </div>
+        <ul class="file-list party-list" id="partyList"></ul>
+      </section>
+
       <section class="toolbar" aria-live="polite">
         <p id="statusText">Ready.</p>
-        <button class="quiet-button" id="refreshButton" type="button">Refresh</button>
       </section>
 
       <section>
+        <div class="section-head dumps-head">
+          <h2 class="list-title" id="itemListTitle">Loose Dumps</h2>
+          <button class="quiet-button section-toggle flush-toggle" id="dumpsToggle" type="button" aria-controls="fileList" aria-expanded="true" aria-label="Collapse dumps" title="Collapse dumps"></button>
+        </div>
         <ul class="file-list" id="fileList"></ul>
       </section>
+
+      <footer class="storage-footer">
+        <p id="storagePath">Storage loading.</p>
+      </footer>
 
       <section class="deleted-space" id="deletedSpace" hidden>
         <div class="deleted-head">
