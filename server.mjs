@@ -45,6 +45,11 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
 
+    if ((request.method === "GET" || request.method === "HEAD") && url.pathname === "/healthz") {
+      handleHealth(request, response);
+      return;
+    }
+
     if (request.method === "GET" && url.pathname === "/api/files") {
       await handleList(response);
       return;
@@ -138,6 +143,25 @@ server.listen(port, host, () => {
   console.log(`Dumpy is listening on http://${host}:${port}`);
   console.log(`Dumps live in ${dataDir}`);
 });
+
+function handleHealth(request, response) {
+  const payload = {
+    ok: true,
+    app: "dumpy"
+  };
+
+  response.writeHead(200, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store"
+  });
+
+  if (request.method === "HEAD") {
+    response.end();
+    return;
+  }
+
+  response.end(`${JSON.stringify(payload)}\n`);
+}
 
 async function handleList(response) {
   await purgeExpiredDeletedItems();
