@@ -23,6 +23,7 @@ https://dumpy.tail649edd.ts.net
 ```
 
 Dumpy is tailnet-only. Open the Tailscale app and make sure you are connected before using it from mobile.
+Delete older iPhone Home Screen shortcuts that include a port number.
 
 ## Install
 

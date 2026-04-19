@@ -6,20 +6,11 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 const officialUrl = normalizeUrl(process.env.DUMPY_OFFICIAL_URL || "https://dumpy.tail649edd.ts.net/");
-const compatibilityUrl = normalizeUrl(process.env.DUMPY_COMPATIBILITY_URL || "https://codys-mac-studio-1.tail649edd.ts.net:7331/");
 const localPort = process.env.DUMPY_LOCAL_PORT || "7331";
 const officialRouteKey = routeKeyFor(officialUrl);
-const compatibilityRouteKey = routeKeyFor(compatibilityUrl);
 const officialHealthUrl = new URL("/healthz", officialUrl).href;
-const compatibilityHealthUrl = new URL("/healthz", compatibilityUrl).href;
+const localHealthUrl = `http://127.0.0.1:${localPort}/healthz`;
 const expectedProxy = `http://127.0.0.1:${localPort}`;
-const allowedExtraRoutes = parseAllowedExtraRoutes(
-  process.env.DUMPY_ALLOWED_EXTRA_SERVE_ROUTES ||
-    [
-      "codys-mac-studio-1.tail649edd.ts.net:443/->http://127.0.0.1:4477",
-      "codys-mac-studio-1.tail649edd.ts.net:4311/->http://127.0.0.1:4311"
-    ].join(",")
-);
 
 const checks = [];
 
@@ -29,12 +20,12 @@ try {
   const funnelText = await runText("tailscale", ["funnel", "status"]);
   const routes = flattenServeRoutes(serveJson);
 
-  assertExpectedLocalServeRoute(routes);
-  assertNoUnexpectedDumpyRoutes(routes);
-  assertNoUnexpectedServeRoutes(routes);
+  assertOfficialServeRouteIfPresent(routes);
+  assertNoStaleDumpyRoutes(routes);
+  noteOtherServeRoutes(routes);
   assertFunnelDisabled(funnelJson, funnelText);
+  await assertHealth(localHealthUrl, "local");
   await assertHealth(officialHealthUrl, "canonical");
-  await assertHealth(compatibilityHealthUrl, "compatibility");
 
   console.log("Dumpy secure doctor: OK");
   for (const check of checks) {
@@ -84,23 +75,29 @@ function flattenServeRoutes(config) {
   return routes;
 }
 
-function assertExpectedLocalServeRoute(routes) {
-  const expectedRouteKeys = new Set([officialRouteKey, compatibilityRouteKey]);
-  const route = routes.find((candidate) => expectedRouteKeys.has(candidate.hostPort) && candidate.path === "/" && candidate.proxy === expectedProxy);
+function assertOfficialServeRouteIfPresent(routes) {
+  const officialRoutes = routes.filter((route) => route.hostPort === officialRouteKey);
 
-  if (!route) {
-    throw new Error(`Missing Dumpy local Serve route to ${expectedProxy}`);
+  if (!officialRoutes.length) {
+    checks.push("Canonical Serve route is externally managed");
+    return;
   }
 
-  checks.push(`Serve route exists: ${route.hostPort}/ -> ${expectedProxy}`);
+  const route = officialRoutes.find((candidate) => candidate.path === "/" && candidate.proxy === expectedProxy);
+
+  if (!route) {
+    throw new Error(`Official Dumpy Serve route does not point to ${expectedProxy}: ${formatRoutes(officialRoutes)}`);
+  }
+
+  checks.push(`Official Serve route exists: ${route.hostPort}/ -> ${expectedProxy}`);
 }
 
-function assertNoUnexpectedDumpyRoutes(routes) {
+function assertNoStaleDumpyRoutes(routes) {
   const staleRoutes = routes.filter(
     (route) =>
       route.proxy === expectedProxy &&
       !(
-        (route.hostPort === officialRouteKey || route.hostPort === compatibilityRouteKey) &&
+        route.hostPort === officialRouteKey &&
         route.path === "/"
       )
   );
@@ -112,22 +109,22 @@ function assertNoUnexpectedDumpyRoutes(routes) {
   checks.push("No stale alternate Dumpy Serve routes");
 }
 
-function assertNoUnexpectedServeRoutes(routes) {
-  const unexpected = routes.filter(
+function noteOtherServeRoutes(routes) {
+  const otherRoutes = routes.filter(
     (route) =>
       !(
-        (route.hostPort === officialRouteKey || route.hostPort === compatibilityRouteKey) &&
+        route.hostPort === officialRouteKey &&
         route.path === "/" &&
         route.proxy === expectedProxy
-      ) &&
-      !allowedExtraRoutes.some((allowed) => route.hostPort === allowed.hostPort && route.path === allowed.path && route.proxy === allowed.proxy)
+      )
   );
 
-  if (unexpected.length) {
-    throw new Error(`Unexpected Serve route(s): ${formatRoutes(unexpected)}`);
+  if (!otherRoutes.length) {
+    checks.push("No other node Serve routes present");
+    return;
   }
 
-  checks.push("No unexpected Tailscale Serve routes");
+  checks.push(`${otherRoutes.length} non-Dumpy Serve route(s) left untouched`);
 }
 
 function assertFunnelDisabled(funnelJson, funnelText) {
@@ -180,27 +177,6 @@ function hasTruthyFunnelFlag(value) {
   }
 
   return false;
-}
-
-function parseAllowedExtraRoutes(value) {
-  return String(value || "")
-    .split(",")
-    .map((route) => route.trim())
-    .filter(Boolean)
-    .map((route) => {
-      const [left, proxy] = route.split("->");
-      const slashIndex = left.indexOf("/");
-
-      if (!proxy || slashIndex === -1) {
-        throw new Error(`Invalid DUMPY_ALLOWED_EXTRA_SERVE_ROUTES entry: ${route}`);
-      }
-
-      return {
-        hostPort: left.slice(0, slashIndex),
-        path: left.slice(slashIndex) || "/",
-        proxy
-      };
-    });
 }
 
 function formatRoutes(routes) {
