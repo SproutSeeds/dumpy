@@ -1,0 +1,19 @@
+{
+  "name": "Dumpy",
+  "short_name": "Dumpy",
+  "id": "https://dumpy.tail649edd.ts.net/",
+  "start_url": "https://dumpy.tail649edd.ts.net/",
+  "scope": "https://dumpy.tail649edd.ts.net/",
+  "display": "standalone",
+  "background_color": "#fbf9f2",
+  "theme_color": "#fbf9f2",
+  "description": "A private tailnet drop box for files, links, and text.",
+  "icons": [
+    {
+      "src": "https://dumpy.tail649edd.ts.net/dumpy-mascot.png?v=3",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

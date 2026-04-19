@@ -11,6 +11,8 @@ import { fileURLToPath } from "node:url";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(rootDir, "public");
+const packageInfo = JSON.parse(await readFile(path.join(rootDir, "package.json"), "utf8"));
+const appVersion = typeof packageInfo.version === "string" ? packageInfo.version : "0.0.0";
 const cliOptions = parseCliOptions(process.argv.slice(2));
 
 if (cliOptions.help) {
@@ -147,7 +149,8 @@ server.listen(port, host, () => {
 function handleHealth(request, response) {
   const payload = {
     ok: true,
-    app: "dumpy"
+    app: "dumpy",
+    version: appVersion
   };
 
   response.writeHead(200, {

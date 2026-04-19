@@ -5,15 +5,20 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-const officialHost = process.env.DUMPY_TAILSCALE_HOST || "codys-mac-studio-1.tail649edd.ts.net";
-const officialPort = process.env.DUMPY_TAILSCALE_PORT || "7331";
+const officialUrl = normalizeUrl(process.env.DUMPY_OFFICIAL_URL || "https://dumpy.tail649edd.ts.net/");
+const compatibilityUrl = normalizeUrl(process.env.DUMPY_COMPATIBILITY_URL || "https://codys-mac-studio-1.tail649edd.ts.net:7331/");
 const localPort = process.env.DUMPY_LOCAL_PORT || "7331";
-const officialRouteKey = `${officialHost}:${officialPort}`;
-const officialUrl = `https://${officialRouteKey}/`;
-const officialHealthUrl = `${officialUrl}healthz`;
+const officialRouteKey = routeKeyFor(officialUrl);
+const compatibilityRouteKey = routeKeyFor(compatibilityUrl);
+const officialHealthUrl = new URL("/healthz", officialUrl).href;
+const compatibilityHealthUrl = new URL("/healthz", compatibilityUrl).href;
 const expectedProxy = `http://127.0.0.1:${localPort}`;
 const allowedExtraRoutes = parseAllowedExtraRoutes(
-  process.env.DUMPY_ALLOWED_EXTRA_SERVE_ROUTES || `${officialHost}:443/->http://127.0.0.1:4477`
+  process.env.DUMPY_ALLOWED_EXTRA_SERVE_ROUTES ||
+    [
+      "codys-mac-studio-1.tail649edd.ts.net:443/->http://127.0.0.1:4477",
+      "codys-mac-studio-1.tail649edd.ts.net:4311/->http://127.0.0.1:4311"
+    ].join(",")
 );
 
 const checks = [];
@@ -24,17 +29,18 @@ try {
   const funnelText = await runText("tailscale", ["funnel", "status"]);
   const routes = flattenServeRoutes(serveJson);
 
-  assertExpectedServeRoute(routes);
+  assertExpectedLocalServeRoute(routes);
   assertNoUnexpectedDumpyRoutes(routes);
   assertNoUnexpectedServeRoutes(routes);
   assertFunnelDisabled(funnelJson, funnelText);
-  await assertHealth();
+  await assertHealth(officialHealthUrl, "canonical");
+  await assertHealth(compatibilityHealthUrl, "compatibility");
 
   console.log("Dumpy secure doctor: OK");
   for (const check of checks) {
     console.log(`- ${check}`);
   }
-  console.log(`Official URL: ${officialUrl}`);
+  console.log(`Official URL: ${officialUrl.href}`);
 } catch (error) {
   console.error("Dumpy secure doctor: FAIL");
   console.error(error.message || error);
@@ -78,21 +84,25 @@ function flattenServeRoutes(config) {
   return routes;
 }
 
-function assertExpectedServeRoute(routes) {
-  const route = routes.find(
-    (candidate) => candidate.hostPort === officialRouteKey && candidate.path === "/" && candidate.proxy === expectedProxy
-  );
+function assertExpectedLocalServeRoute(routes) {
+  const expectedRouteKeys = new Set([officialRouteKey, compatibilityRouteKey]);
+  const route = routes.find((candidate) => expectedRouteKeys.has(candidate.hostPort) && candidate.path === "/" && candidate.proxy === expectedProxy);
 
   if (!route) {
-    throw new Error(`Missing official route: ${officialRouteKey}/ -> ${expectedProxy}`);
+    throw new Error(`Missing Dumpy local Serve route to ${expectedProxy}`);
   }
 
-  checks.push(`Serve route exists: ${officialRouteKey}/ -> ${expectedProxy}`);
+  checks.push(`Serve route exists: ${route.hostPort}/ -> ${expectedProxy}`);
 }
 
 function assertNoUnexpectedDumpyRoutes(routes) {
   const staleRoutes = routes.filter(
-    (route) => route.proxy === expectedProxy && !(route.hostPort === officialRouteKey && route.path === "/")
+    (route) =>
+      route.proxy === expectedProxy &&
+      !(
+        (route.hostPort === officialRouteKey || route.hostPort === compatibilityRouteKey) &&
+        route.path === "/"
+      )
   );
 
   if (staleRoutes.length) {
@@ -105,7 +115,11 @@ function assertNoUnexpectedDumpyRoutes(routes) {
 function assertNoUnexpectedServeRoutes(routes) {
   const unexpected = routes.filter(
     (route) =>
-      !(route.hostPort === officialRouteKey && route.path === "/" && route.proxy === expectedProxy) &&
+      !(
+        (route.hostPort === officialRouteKey || route.hostPort === compatibilityRouteKey) &&
+        route.path === "/" &&
+        route.proxy === expectedProxy
+      ) &&
       !allowedExtraRoutes.some((allowed) => route.hostPort === allowed.hostPort && route.path === allowed.path && route.proxy === allowed.proxy)
   );
 
@@ -134,20 +148,20 @@ function assertFunnelDisabled(funnelJson, funnelText) {
   checks.push("Tailscale Funnel is not enabled");
 }
 
-async function assertHealth() {
-  const response = await fetch(officialHealthUrl);
+async function assertHealth(url, label) {
+  const response = await fetch(url);
 
   if (!response.ok) {
-    throw new Error(`Health check failed: ${officialHealthUrl} returned ${response.status}`);
+    throw new Error(`${label} health check failed: ${url} returned ${response.status}`);
   }
 
   const payload = await response.json();
 
-  if (payload?.ok !== true || payload?.app !== "dumpy") {
+  if (payload?.ok !== true || payload?.app !== "dumpy" || typeof payload?.version !== "string") {
     throw new Error(`Unexpected health payload: ${JSON.stringify(payload)}`);
   }
 
-  checks.push(`Health check passed: ${officialHealthUrl} -> ${JSON.stringify(payload)}`);
+  checks.push(`${label} health check passed: ${url} -> ${JSON.stringify(payload)}`);
 }
 
 function hasTruthyFunnelFlag(value) {
@@ -191,4 +205,17 @@ function parseAllowedExtraRoutes(value) {
 
 function formatRoutes(routes) {
   return routes.map((route) => `${route.hostPort}${route.path} -> ${route.proxy}`).join(", ");
+}
+
+function normalizeUrl(value) {
+  const url = new URL(value);
+  url.pathname = "/";
+  url.search = "";
+  url.hash = "";
+  return url;
+}
+
+function routeKeyFor(url) {
+  const port = url.port || (url.protocol === "https:" ? "443" : "80");
+  return `${url.hostname}:${port}`;
 }

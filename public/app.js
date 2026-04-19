@@ -194,7 +194,7 @@ async function loadFiles() {
     const visibleItems = itemsForActiveParty();
     setStatus(visibleItems.length ? `${visibleItems.length} item${visibleItems.length === 1 ? "" : "s"}.` : "Ready.");
   } catch {
-    setStatus("Could not refresh.");
+    setStatus("Dumpy is private. Open Tailscale and make sure you are connected, then try again.");
   }
 }
 

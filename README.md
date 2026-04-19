@@ -14,6 +14,16 @@
 
 A tiny file, link, and text drop for a Tailscale tailnet.
 
+## Official Phone URL
+
+Save this URL to your iPhone Home Screen:
+
+```text
+https://dumpy.tail649edd.ts.net
+```
+
+Dumpy is tailnet-only. Open the Tailscale app and make sure you are connected before using it from mobile.
+
 ## Install
 
 ```sh
@@ -49,34 +59,46 @@ Deleting a card moves it to Recently deleted for 30 days. Deleting it again from
 
 ## Serve On Tailscale
 
-In another terminal:
-
-```sh
-tailscale serve --bg --https=7331 7331
-tailscale serve status
-```
-
-Open the HTTPS URL from `tailscale serve status` on your phone or computer.
-
-On this machine it is currently:
+For this hosted Dumpy instance, the shared Tailscale live-app-host routes:
 
 ```text
-https://codys-mac-studio-1.tail649edd.ts.net:7331/
+https://dumpy.tail649edd.ts.net -> http://127.0.0.1:7331
 ```
 
-To stop the Tailnet proxy:
+The local Dumpy service stays bound to `127.0.0.1:7331`.
+
+Do not enable public Tailscale Funnel for Dumpy.
+
+## Health And Access Check
 
 ```sh
-tailscale serve --https=7331 off
+curl https://dumpy.tail649edd.ts.net/healthz
+npm run doctor:secure
+```
+
+The health response includes the app name and version:
+
+```json
+{
+  "ok": true,
+  "app": "dumpy",
+  "version": "0.2.0"
+}
 ```
 
 ## Options
 
 ```sh
 DUMPY_PORT=8080 dumpy-files
-DUMPY_HOST=0.0.0.0 dumpy-files
+DUMPY_HOST=127.0.0.1 dumpy-files
 dumpy-files --data-dir /Volumes/Samsung_T7/Dumpy
 DUMPY_DATA_DIR=/Volumes/Samsung_T7/Dumpy dumpy-files
 ```
 
-Dumpy does not add its own login screen. Keep it on Tailscale unless you want everyone with the URL to upload and download files.
+Dumpy does not add its own login screen. Keep it on Tailscale and keep the local app bound to localhost or another private interface.
+
+## Updates
+
+Hosted phone users get app updates after the running Dumpy service is updated and restarted.
+Package users need a separate Dumpy npm release.
+Publishing or updating Clawdad does not update Dumpy.
