@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/SproutSeeds/dumpy/main/public/dumpy-ui.png?v=0.2.0" alt="Dumpy web app showing a text dump box, dump party tools, and file drop zone." width="760">
+  <img src="https://raw.githubusercontent.com/SproutSeeds/dumpy/main/public/dumpy-ui.png?v=0.2.1" alt="Dumpy web app showing a text dump box, dump party tools, and file drop zone." width="760">
 </p>
 
 A tiny file, link, and text drop for a Tailscale tailnet.
@@ -83,7 +83,7 @@ The health response includes the app name and version:
 {
   "ok": true,
   "app": "dumpy",
-  "version": "0.2.0"
+  "version": "0.2.1"
 }
 ```
 
