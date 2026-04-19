@@ -663,6 +663,7 @@ async function openFilePreview(file) {
   const kind = previewKind(mimeType, file.name || "");
 
   if (kind === "image") {
+    previewBody.classList.add("preview-image-body");
     const image = document.createElement("img");
     image.className = "preview-image";
     image.alt = file.name || "File preview";
