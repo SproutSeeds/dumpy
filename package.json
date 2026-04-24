@@ -1,6 +1,6 @@
 {
   "name": "dumpy-files",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "Dumpy is a tiny Tailnet file, link, and text drop.",
   "bin": {
@@ -28,6 +28,10 @@
   ],
   "author": "Cody Mitchell",
   "license": "MIT",
+  "funding": {
+    "type": "individual",
+    "url": "https://frg.earth/support?utm_source=npm&utm_medium=funding&utm_campaign=public_work_support&package=dumpy-files"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/SproutSeeds/dumpy.git"

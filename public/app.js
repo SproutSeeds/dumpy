@@ -11,6 +11,9 @@ const dumpForm = document.querySelector("#dumpForm");
 const dumpInput = document.querySelector("#dumpInput");
 const partyForm = document.querySelector("#partyForm");
 const partyName = document.querySelector("#partyName");
+const createPartyButton = document.querySelector("#createPartyButton");
+const partyCreateOverlay = document.querySelector("#partyCreateOverlay");
+const partyCreateCancel = document.querySelector("#partyCreateCancel");
 const partySection = document.querySelector("#partySection");
 const partyList = document.querySelector("#partyList");
 const partyCount = document.querySelector("#partyCount");
@@ -89,6 +92,13 @@ chooseFolderButton.addEventListener("click", () => {
 mascot.addEventListener("click", handleMascotClick);
 dumpForm.addEventListener("submit", dumpText);
 partyForm.addEventListener("submit", createParty);
+createPartyButton.addEventListener("click", openPartyCreator);
+partyCreateCancel.addEventListener("click", closePartyCreator);
+partyCreateOverlay.addEventListener("click", (event) => {
+  if (event.target === partyCreateOverlay) {
+    closePartyCreator();
+  }
+});
 clearPartyButton.addEventListener("click", () => {
   setActiveParty(null);
 });
@@ -122,6 +132,10 @@ document.addEventListener("keydown", (event) => {
 
   if (event.key === "Escape" && !confirmOverlay.hidden) {
     settleConfirm(false);
+  }
+
+  if (event.key === "Escape" && !partyCreateOverlay.hidden) {
+    closePartyCreator();
   }
 });
 dumpInput.addEventListener("keydown", (event) => {
@@ -221,12 +235,29 @@ async function createParty(event) {
     }
 
     const payload = await response.json();
-    partyName.value = "";
+    closePartyCreator({ restoreFocus: false });
     await loadFiles();
     setActiveParty(payload.party?.id || null);
     setStatus("Party started.");
   } catch {
     setStatus("Party failed.");
+  }
+}
+
+function openPartyCreator() {
+  partyName.value = "";
+  partyCreateOverlay.hidden = false;
+  document.body.classList.add("is-creating-party");
+  partyName.focus();
+}
+
+function closePartyCreator({ restoreFocus = true } = {}) {
+  partyCreateOverlay.hidden = true;
+  document.body.classList.remove("is-creating-party");
+  partyName.value = "";
+
+  if (restoreFocus) {
+    createPartyButton.focus();
   }
 }
 
@@ -537,7 +568,7 @@ function setActiveParty(id) {
 
 function renderParties() {
   partyList.replaceChildren();
-  partySection.hidden = allParties.length === 0;
+  partySection.hidden = false;
   partyCount.textContent = allParties.length ? `(${allParties.length})` : "";
   renderCollapseState();
 

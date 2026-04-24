@@ -103,3 +103,7 @@ Dumpy does not add its own login screen. Keep it on Tailscale and keep the local
 Hosted phone users get app updates after the running Dumpy service is updated and restarted.
 Package users need a separate Dumpy npm release.
 Publishing or updating Clawdad does not update Dumpy.
+
+## Support
+
+Everything here is released for public use. If Dumpy saved you time or you want to keep the work moving, you can [support public FRG releases](https://frg.earth/support?utm_source=readme&utm_medium=repo&utm_campaign=public_work_support&package=dumpy-files).

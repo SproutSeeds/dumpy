@@ -34,7 +34,8 @@ body {
 }
 
 body.is-previewing,
-body.is-confirming {
+body.is-confirming,
+body.is-creating-party {
   overflow: hidden;
 }
 
@@ -666,26 +667,6 @@ h1 {
   margin-bottom: 14px;
 }
 
-.party-form {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
-.party-form input {
-  min-height: 44px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0 14px;
-  background: var(--surface);
-  color: var(--ink);
-}
-
-.party-form input:focus {
-  outline: 3px solid rgba(31, 122, 131, 0.22);
-  border-color: var(--teal);
-}
-
 .active-party {
   display: flex;
   flex-wrap: wrap;
@@ -875,6 +856,30 @@ h1 {
 .section-head p {
   margin: 0;
   color: var(--muted);
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.add-party-button {
+  border-radius: 999px;
+  border-color: var(--teal-dark);
+  background: var(--teal-dark);
+  color: #ffffff;
+  box-shadow: 0 5px 14px rgba(31, 122, 131, 0.18);
+}
+
+.add-party-button:hover {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+.add-party-button:focus-visible {
+  outline: 3px solid rgba(31, 122, 131, 0.28);
+  outline-offset: 2px;
 }
 
 .section-toggle {
@@ -1191,7 +1196,8 @@ h1 {
   background: rgba(23, 32, 38, 0.48);
 }
 
-.confirm-overlay {
+.confirm-overlay,
+.party-create-overlay {
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -1201,11 +1207,13 @@ h1 {
   background: rgba(23, 32, 38, 0.48);
 }
 
-.confirm-overlay[hidden] {
+.confirm-overlay[hidden],
+.party-create-overlay[hidden] {
   display: none;
 }
 
-.confirm-panel {
+.confirm-panel,
+.party-create-panel {
   width: min(100%, 360px);
   padding: 18px;
   border: 1px solid var(--line);
@@ -1214,7 +1222,13 @@ h1 {
   box-shadow: 0 22px 80px rgba(23, 32, 38, 0.32);
 }
 
-.confirm-panel h2 {
+.party-create-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.confirm-panel h2,
+.party-create-panel h2 {
   margin: 0;
   font-size: 1.4rem;
 }
@@ -1224,6 +1238,21 @@ h1 {
   color: var(--muted);
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+.party-create-panel input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 14px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.party-create-panel input:focus {
+  outline: 3px solid rgba(31, 122, 131, 0.22);
+  border-color: var(--teal);
 }
 
 .confirm-actions {
@@ -1399,10 +1428,6 @@ h1 {
 
   .detail-url {
     font-size: 2rem;
-  }
-
-  .party-form {
-    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .dump-form {

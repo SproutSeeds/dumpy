@@ -14,8 +14,8 @@
     <link rel="manifest" href="/manifest.webmanifest?v=1">
     <link rel="icon" href="/dumpy-mascot.png?v=3">
     <link rel="apple-touch-icon" href="/dumpy-mascot.png?v=3">
-    <link rel="stylesheet" href="/styles.css?v=28">
-    <script src="/app.js?v=28" type="module"></script>
+    <link rel="stylesheet" href="/styles.css?v=29">
+    <script src="/app.js?v=29" type="module"></script>
   </head>
   <body>
     <main class="shell">
@@ -44,11 +44,6 @@
       </section>
 
       <section class="party-tools" aria-label="Dump party tools">
-        <form class="party-form" id="partyForm">
-          <label class="sr-only" for="partyName">New dump party</label>
-          <input id="partyName" type="text" maxlength="120" placeholder="Name a dump party">
-          <button class="quiet-button" type="submit">Make party</button>
-        </form>
         <div class="active-party">
           <span>Dumping into <strong id="activePartyLabel">Loose Dumps</strong></span>
           <button class="quiet-button" id="clearPartyButton" type="button" hidden>Use Loose Dumps</button>
@@ -67,13 +62,21 @@
         </div>
       </section>
 
-      <section class="party-section" id="partySection" hidden>
+      <section class="party-section" id="partySection">
         <div class="section-head">
           <div>
             <h2>Dump Parties <span id="partyCount"></span></h2>
             <p>Pick one to aim the dump box and file drop there.</p>
           </div>
-          <button class="quiet-button section-toggle flush-toggle" id="partyToggle" type="button" aria-controls="partyList" aria-expanded="true" aria-label="Collapse dump parties" title="Collapse dump parties"></button>
+          <div class="section-actions">
+            <button class="icon-button add-party-button" id="createPartyButton" type="button" aria-label="Make dump party" aria-haspopup="dialog" aria-controls="partyCreateOverlay" title="Make dump party">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+              </svg>
+            </button>
+            <button class="quiet-button section-toggle flush-toggle" id="partyToggle" type="button" aria-controls="partyList" aria-expanded="true" aria-label="Collapse dump parties" title="Collapse dump parties"></button>
+          </div>
         </div>
         <ul class="file-list party-list" id="partyList"></ul>
       </section>
@@ -130,6 +133,18 @@
           <button class="dump-button" id="confirmYes" type="button">Yes</button>
         </div>
       </div>
+    </section>
+
+    <section class="party-create-overlay" id="partyCreateOverlay" role="dialog" aria-modal="true" aria-labelledby="partyCreateTitle" hidden>
+      <form class="party-create-panel" id="partyForm">
+        <h2 id="partyCreateTitle">New Dump Party</h2>
+        <label class="sr-only" for="partyName">Party name</label>
+        <input id="partyName" type="text" maxlength="120" placeholder="Party name" autocomplete="off">
+        <div class="confirm-actions">
+          <button class="quiet-button" id="partyCreateCancel" type="button">Cancel</button>
+          <button class="dump-button" type="submit">Create</button>
+        </div>
+      </form>
     </section>
   </body>
 </html>
