@@ -1329,11 +1329,45 @@ body.is-screenshot-space .screenshot-tools {
   stroke-width: 2;
 }
 
+.icon-button.is-success {
+  color: #2f7d3f;
+  border-color: #2f7d3f;
+  background: #edf8ef;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.icon-button.is-success svg {
+  animation: icon-success-pop 260ms ease both;
+}
+
+.icon-button.is-success-fading svg {
+  opacity: 0;
+  transform: scale(0.72);
+  transition:
+    opacity 190ms ease,
+    transform 190ms ease;
+}
+
 .download-link {
   padding: 0 14px;
   color: #ffffff;
   background: var(--teal);
   font-weight: 800;
+}
+
+@keyframes icon-success-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .empty {

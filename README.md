@@ -88,7 +88,7 @@ The health response includes the app name and version:
 {
   "ok": true,
   "app": "dumpy",
-  "version": "0.3.0"
+  "version": "0.3.1"
 }
 ```
 

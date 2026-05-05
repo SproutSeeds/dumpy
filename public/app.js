@@ -89,6 +89,7 @@ let screenshotMeta = {
   enabled: true,
   folder: ""
 };
+const screenshotBlobCache = new Map();
 let deletedItemsCache = [];
 let deletedPartiesCache = [];
 let activePartyId = null;
@@ -109,12 +110,12 @@ chooseFolderButton.addEventListener("click", () => {
   folderInput.click();
 });
 mascot.addEventListener("click", () => {
-  if (!screenshotSpaceActive) {
-    handleMascotClick();
-    return;
-  }
+  const wasScreenshotSpace = screenshotSpaceActive;
+  handleMascotClick();
 
-  enterDumpySpace({ pushHistory: screenshotSpaceActive });
+  if (wasScreenshotSpace) {
+    enterDumpySpace({ pushHistory: true });
+  }
 });
 dumpForm.addEventListener("submit", dumpText);
 partyForm.addEventListener("submit", createParty);
@@ -263,6 +264,7 @@ async function loadScreenshots() {
     const payload = await response.json();
     allScreenshots = payload.screenshots || [];
     screenshotMeta = payload;
+    pruneScreenshotBlobCache();
     renderScreenshots();
   } catch {
     allScreenshots = [];
@@ -296,6 +298,7 @@ async function chooseScreenshotFolderFromHost() {
     const payload = await response.json();
     allScreenshots = payload.screenshots || [];
     screenshotMeta = payload;
+    pruneScreenshotBlobCache();
     renderScreenshots();
     setStatus("Screenshot folder updated.");
   } catch {
@@ -799,6 +802,10 @@ function renderScreenshots() {
   for (const screenshot of allScreenshots) {
     screenshotList.append(renderScreenshot(screenshot));
   }
+
+  for (const screenshot of allScreenshots.slice(0, 12)) {
+    warmScreenshotBlob(screenshot);
+  }
 }
 
 function updateScreenshotFriend() {
@@ -822,6 +829,9 @@ function renderScreenshot(screenshot) {
   card.draggable = true;
   card.title = "Drag this screenshot into another app or page.";
   card.addEventListener("dragstart", (event) => startScreenshotDrag(event, screenshot));
+  card.addEventListener("pointerdown", () => {
+    warmScreenshotBlob(screenshot);
+  });
 
   const summaryButton = document.createElement("button");
   summaryButton.className = "screenshot-summary-button";
@@ -837,6 +847,7 @@ function renderScreenshot(screenshot) {
   image.alt = "";
   image.loading = "lazy";
   image.decoding = "async";
+  image.draggable = false;
   image.src = screenshot.previewHref || screenshot.href;
   thumb.append(image);
 
@@ -877,11 +888,30 @@ function renderScreenshot(screenshot) {
 function startScreenshotDrag(event, screenshot) {
   const url = absoluteUrl(screenshot.href);
   const previewUrl = absoluteUrl(screenshot.previewHref || screenshot.href);
+  const cachedBlob = screenshotBlobCache.get(screenshot.id);
+  const fileName = safeDragFilename(screenshot.name || "screenshot.png");
+  const mimeType = cachedBlob?.type || screenshot.mimeType || "image/png";
 
   event.dataTransfer.effectAllowed = "copy";
   event.dataTransfer.setData("text/uri-list", url);
   event.dataTransfer.setData("text/plain", url);
   event.dataTransfer.setData("text/html", `<img src="${escapeHtml(previewUrl)}" alt="${escapeHtml(screenshot.name || "Screenshot")}">`);
+  event.dataTransfer.setData("DownloadURL", `${mimeType}:${fileName}:${url}`);
+
+  if (cachedBlob) {
+    try {
+      const file = new File([cachedBlob], fileName, {
+        type: mimeType
+      });
+      event.dataTransfer.items?.add(file);
+    } catch {
+      // Some browser targets only accept URL/html drag payloads.
+    }
+  }
+}
+
+function safeDragFilename(name) {
+  return String(name).replace(/[\\/:*?"<>|\r\n]+/g, "-").trim() || "screenshot.png";
 }
 
 function renderSectionToggle(button, collapsed, label) {
@@ -986,16 +1016,15 @@ function openPreviewShell(title, bodyClass = "preview-body") {
 
 async function openFilePreview(file) {
   openPreviewShell(file.name || "Preview");
-  previewFooter.append(createCopyFileLinkButton(file), createDownloadLink(file));
 
   if (file.kind === "screenshot") {
-    previewFooter.prepend(createCopyImageButton(file));
+    previewFooter.append(createCopyImageButton(file), createDownloadLink(file));
 
     if (screenshotMeta.canReveal) {
       previewFooter.append(createRevealButton(file));
     }
   } else {
-    previewFooter.append(createDeleteButton(file));
+    previewFooter.append(createCopyFileLinkButton(file), createDownloadLink(file), createDeleteButton(file));
   }
 
   const previewHref = file.previewHref || file.href;
@@ -1444,7 +1473,13 @@ function createCopyTextButton(label, value) {
 
 function createCopyImageButton(screenshot) {
   const button = createIconButton("Copy image", copyIconSvg());
-  button.addEventListener("click", () => copyScreenshotImage(screenshot));
+  button.addEventListener("click", async () => {
+    const copied = await copyScreenshotImage(screenshot);
+
+    if (copied) {
+      showIconButtonSuccess(button, "Image copied");
+    }
+  });
   return button;
 }
 
@@ -1475,6 +1510,14 @@ function copyIconSvg() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M8 8h10v10H8z"></path>
       <path d="M6 14H4V4h10v2"></path>
+    </svg>
+  `;
+}
+
+function checkIconSvg() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 12.5l4.5 4.5L19 7"></path>
     </svg>
   `;
 }
@@ -1661,16 +1704,10 @@ async function copyScreenshotImage(screenshot) {
   try {
     if (!window.ClipboardItem || !navigator.clipboard?.write) {
       await copyLink(screenshot.href);
-      return;
+      return false;
     }
 
-    const response = await fetch(screenshot.previewHref || screenshot.href, { cache: "no-store" });
-
-    if (!response.ok) {
-      throw new Error("Image fetch failed");
-    }
-
-    const blob = await response.blob();
+    const blob = await getScreenshotBlob(screenshot);
     const type = blob.type || screenshot.mimeType || "image/png";
     await navigator.clipboard.write([
       new ClipboardItem({
@@ -1678,9 +1715,68 @@ async function copyScreenshotImage(screenshot) {
       })
     ]);
     setStatus("Screenshot copied.");
+    return true;
   } catch {
     await copyLink(screenshot.href);
+    return false;
   }
+}
+
+async function warmScreenshotBlob(screenshot) {
+  try {
+    await getScreenshotBlob(screenshot);
+  } catch {
+    // Drag still carries URL/html payloads if blob caching fails.
+  }
+}
+
+async function getScreenshotBlob(screenshot) {
+  const cached = screenshotBlobCache.get(screenshot.id);
+
+  if (cached) {
+    return cached;
+  }
+
+  const response = await fetch(screenshot.previewHref || screenshot.href, { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error("Image fetch failed");
+  }
+
+  const blob = await response.blob();
+  screenshotBlobCache.set(screenshot.id, blob);
+  return blob;
+}
+
+function pruneScreenshotBlobCache() {
+  const visibleIds = new Set(allScreenshots.map((screenshot) => screenshot.id));
+
+  for (const id of screenshotBlobCache.keys()) {
+    if (!visibleIds.has(id)) {
+      screenshotBlobCache.delete(id);
+    }
+  }
+}
+
+function showIconButtonSuccess(button, label) {
+  const previousLabel = button.getAttribute("aria-label") || "";
+  window.clearTimeout(button.successFadeTimer);
+  window.clearTimeout(button.successResetTimer);
+
+  button.classList.remove("is-success-fading");
+  button.classList.add("is-success");
+  button.setAttribute("aria-label", label);
+  button.innerHTML = checkIconSvg();
+
+  button.successFadeTimer = window.setTimeout(() => {
+    button.classList.add("is-success-fading");
+  }, 760);
+
+  button.successResetTimer = window.setTimeout(() => {
+    button.classList.remove("is-success", "is-success-fading");
+    button.setAttribute("aria-label", previousLabel);
+    button.innerHTML = copyIconSvg();
+  }, 950);
 }
 
 async function revealScreenshot(screenshot) {
