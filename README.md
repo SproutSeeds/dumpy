@@ -46,6 +46,11 @@ npm start
 
 Dumpy listens on `http://127.0.0.1:7331`. File cards include download and in-app preview actions, and the active storage folder is shown in the app.
 
+On macOS, Dumpy also keeps screenshots out of the desktop pile. When it starts, it creates `~/Desktop/Screenshots`, points the system screenshot shortcuts at that folder, and shows the folder in a Screenshots space with the newest screenshot first. Click the framed screenshot friend in the header to switch there.
+Use `DUMPY_SCREENSHOT_SHORTCUTS=0` when you want the connected folder view without updating the macOS shortcut destination.
+
+The Screenshots space can choose a new screenshot folder with a native Mac folder picker. Screenshot cards can be dragged into other apps or web pages, copied as images where the browser supports clipboard images, downloaded, previewed, or revealed in Finder.
+
 By default, Dumpy stores data in the normal app-data folder for your OS:
 
 - macOS: `~/Library/Application Support/Dumpy`
@@ -83,7 +88,7 @@ The health response includes the app name and version:
 {
   "ok": true,
   "app": "dumpy",
-  "version": "0.2.1"
+  "version": "0.3.0"
 }
 ```
 
@@ -94,6 +99,9 @@ DUMPY_PORT=8080 dumpy-files
 DUMPY_HOST=127.0.0.1 dumpy-files
 dumpy-files --data-dir /Volumes/Samsung_T7/Dumpy
 DUMPY_DATA_DIR=/Volumes/Samsung_T7/Dumpy dumpy-files
+dumpy-files --screenshots-dir ~/Desktop/Screenshots
+DUMPY_SCREENSHOT_SHORTCUTS=0 dumpy-files
+DUMPY_SCREENSHOTS=0 dumpy-files
 ```
 
 Dumpy does not add its own login screen. Keep it on Tailscale and keep the local app bound to localhost or another private interface.

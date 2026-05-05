@@ -14,25 +14,29 @@
     <link rel="manifest" href="/manifest.webmanifest?v=1">
     <link rel="icon" href="/dumpy-mascot.png?v=3">
     <link rel="apple-touch-icon" href="/dumpy-mascot.png?v=3">
-    <link rel="stylesheet" href="/styles.css?v=29">
-    <script src="/app.js?v=29" type="module"></script>
+    <link rel="stylesheet" href="/styles.css?v=36">
+    <script src="/app.js?v=36" type="module"></script>
   </head>
   <body>
     <main class="shell">
-      <header class="mast">
-        <button class="mascot" id="mascotButton" type="button" data-face="idle" aria-label="Refresh dumps with Dumpy">
+      <header class="mast" aria-label="Dumpy spaces">
+        <button class="space-tab mascot" id="mascotButton" type="button" data-face="idle" aria-label="Show Dumpy" aria-pressed="true">
           <img
             class="mark"
-            alt="Dirty buck-toothed file mascot"
+            alt=""
             width="64"
             height="64"
             src="/mascots/dumpy-idle.svg?v=2"
           >
           <span class="bubble">Oopsie!</span>
         </button>
-        <div>
-          <h1>Dumpy</h1>
-        </div>
+        <h1>Dumpy</h1>
+        <button class="space-tab screenshot-friend" id="screenshotFriend" type="button" aria-label="Show screenshots" aria-pressed="false">
+          <span class="screenshot-bubble">Look at me, Dumpy</span>
+          <span class="screenshot-frame">
+            <img id="screenshotFriendImage" alt="" width="86" height="62" src="/mascots/dumpy-whoa.svg?v=2">
+          </span>
+        </button>
       </header>
 
       <section class="quick-dump">
@@ -62,6 +66,30 @@
         </div>
       </section>
 
+      <section class="screenshot-section" id="screenshotSection">
+        <div class="section-head">
+          <div>
+            <h2>Screenshots <span id="screenshotCount"></span></h2>
+          </div>
+          <button class="quiet-button section-toggle flush-toggle" id="screenshotToggle" type="button" aria-controls="screenshotList" aria-expanded="true" aria-label="Collapse screenshots" title="Collapse screenshots"></button>
+        </div>
+        <div class="screenshot-tools" id="screenshotTools">
+          <p id="screenshotFolder">Most recent first.</p>
+          <div class="screenshot-tool-actions">
+            <button class="quiet-button" id="chooseScreenshotFolder" type="button">Choose folder</button>
+            <button class="icon-button" id="refreshScreenshots" type="button" aria-label="Refresh screenshots" title="Refresh screenshots">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 6v5h-5"></path>
+                <path d="M4 18v-5h5"></path>
+                <path d="M6.5 9A7 7 0 0 1 18 6l2 2"></path>
+                <path d="M17.5 15A7 7 0 0 1 6 18l-2-2"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <ul class="file-list screenshot-list" id="screenshotList"></ul>
+      </section>
+
       <section class="party-section" id="partySection">
         <div class="section-head">
           <div>
@@ -85,7 +113,7 @@
         <p id="statusText">Ready.</p>
       </section>
 
-      <section>
+      <section class="dumps-section">
         <div class="section-head dumps-head">
           <h2 class="list-title" id="itemListTitle">Loose Dumps</h2>
           <button class="quiet-button section-toggle flush-toggle" id="dumpsToggle" type="button" aria-controls="fileList" aria-expanded="true" aria-label="Collapse dumps" title="Collapse dumps"></button>

@@ -1,6 +1,6 @@
 {
   "name": "dumpy-files",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "type": "module",
   "description": "Dumpy is a tiny Tailnet file, link, and text drop.",
   "bin": {

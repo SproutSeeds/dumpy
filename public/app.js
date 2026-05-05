@@ -22,6 +22,16 @@ const activePartyLabel = document.querySelector("#activePartyLabel");
 const clearPartyButton = document.querySelector("#clearPartyButton");
 const storagePath = document.querySelector("#storagePath");
 const dumpsToggle = document.querySelector("#dumpsToggle");
+const screenshotFriend = document.querySelector("#screenshotFriend");
+const screenshotFriendImage = document.querySelector("#screenshotFriendImage");
+const screenshotFriendBubble = screenshotFriend?.querySelector(".screenshot-bubble");
+const screenshotSection = document.querySelector("#screenshotSection");
+const screenshotList = document.querySelector("#screenshotList");
+const screenshotCount = document.querySelector("#screenshotCount");
+const screenshotFolder = document.querySelector("#screenshotFolder");
+const screenshotToggle = document.querySelector("#screenshotToggle");
+const chooseScreenshotFolder = document.querySelector("#chooseScreenshotFolder");
+const refreshScreenshots = document.querySelector("#refreshScreenshots");
 const previewOverlay = document.querySelector("#previewOverlay");
 const previewPanel = document.querySelector(".preview-panel");
 const previewTitle = document.querySelector("#previewTitle");
@@ -61,7 +71,8 @@ const bashfulPhrases = ["awe shucks!", "Oopsie!", "HEEeeenenene!"];
 const poopyPhrases = ["Arrrrgh!!", "Narrggghh!", "OOoooooffaaa!", "AYE!! Culo!"];
 const collapseStorageKeys = {
   dumps: "dumpy:collapse:dumps",
-  parties: "dumpy:collapse:parties"
+  parties: "dumpy:collapse:parties",
+  screenshots: "dumpy:collapse:screenshots"
 };
 
 let refreshTimer = window.setInterval(loadFiles, 8000);
@@ -73,13 +84,21 @@ let mascotClickCount = 0;
 let bashfulFaceIndex = 0;
 let allItems = [];
 let allParties = [];
+let allScreenshots = [];
+let screenshotMeta = {
+  enabled: true,
+  folder: ""
+};
 let deletedItemsCache = [];
 let deletedPartiesCache = [];
 let activePartyId = null;
 let dumpsCollapsed = readCollapsedState(collapseStorageKeys.dumps);
 let partiesCollapsed = readCollapsedState(collapseStorageKeys.parties);
+let screenshotsCollapsed = readCollapsedState(collapseStorageKeys.screenshots);
+let screenshotSpaceActive = window.location.hash === "#screenshots";
 
 preloadMascotIcons();
+renderAppSpace();
 
 chooseButton.addEventListener("click", () => {
   triggerMascotFace();
@@ -89,7 +108,14 @@ chooseFolderButton.addEventListener("click", () => {
   triggerMascotFace();
   folderInput.click();
 });
-mascot.addEventListener("click", handleMascotClick);
+mascot.addEventListener("click", () => {
+  if (!screenshotSpaceActive) {
+    handleMascotClick();
+    return;
+  }
+
+  enterDumpySpace({ pushHistory: screenshotSpaceActive });
+});
 dumpForm.addEventListener("submit", dumpText);
 partyForm.addEventListener("submit", createParty);
 createPartyButton.addEventListener("click", openPartyCreator);
@@ -112,7 +138,19 @@ dumpsToggle.addEventListener("click", () => {
   writeCollapsedState(collapseStorageKeys.dumps, dumpsCollapsed);
   renderCollapseState();
 });
-previewClose.addEventListener("click", closePreview);
+screenshotToggle.addEventListener("click", () => {
+  screenshotsCollapsed = !screenshotsCollapsed;
+  writeCollapsedState(collapseStorageKeys.screenshots, screenshotsCollapsed);
+  renderScreenshots();
+});
+screenshotFriend.addEventListener("click", () => {
+  enterScreenshotSpace({ pushHistory: true });
+});
+chooseScreenshotFolder.addEventListener("click", chooseScreenshotFolderFromHost);
+refreshScreenshots.addEventListener("click", loadScreenshots);
+previewClose.addEventListener("click", () => {
+  goBackOneStep();
+});
 previewOverlay.addEventListener("click", (event) => {
   if (event.target === previewOverlay) {
     closePreview();
@@ -126,16 +164,9 @@ confirmOverlay.addEventListener("click", (event) => {
 confirmYes.addEventListener("click", () => settleConfirm(true));
 confirmNo.addEventListener("click", () => settleConfirm(false));
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !previewOverlay.hidden) {
-    closePreview();
-  }
-
-  if (event.key === "Escape" && !confirmOverlay.hidden) {
-    settleConfirm(false);
-  }
-
-  if (event.key === "Escape" && !partyCreateOverlay.hidden) {
-    closePartyCreator();
+  if (event.key === "Escape") {
+    event.preventDefault();
+    goBackOneStep();
   }
 });
 dumpInput.addEventListener("keydown", (event) => {
@@ -183,6 +214,14 @@ document.addEventListener("visibilitychange", () => {
     loadFiles();
   }
 });
+window.addEventListener("popstate", () => {
+  if (window.location.hash === "#screenshots") {
+    enterScreenshotSpace({ pushHistory: false });
+    return;
+  }
+
+  enterDumpySpace({ pushHistory: false });
+});
 
 await loadFiles();
 
@@ -199,6 +238,7 @@ async function loadFiles() {
     deletedItemsCache = payload.deletedItems || [];
     deletedPartiesCache = payload.deletedParties || [];
     renderStorage(payload.storage);
+    await loadScreenshots();
 
     if (activePartyId && !allParties.some((party) => party.id === activePartyId)) {
       activePartyId = null;
@@ -209,6 +249,135 @@ async function loadFiles() {
     setStatus(visibleItems.length ? `${visibleItems.length} item${visibleItems.length === 1 ? "" : "s"}.` : "Ready.");
   } catch {
     setStatus("Dumpy is private. Open Tailscale and make sure you are connected, then try again.");
+  }
+}
+
+async function loadScreenshots() {
+  try {
+    const response = await fetch("/api/screenshots", { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error("Screenshot list failed");
+    }
+
+    const payload = await response.json();
+    allScreenshots = payload.screenshots || [];
+    screenshotMeta = payload;
+    renderScreenshots();
+  } catch {
+    allScreenshots = [];
+    screenshotMeta = {
+      enabled: true,
+      folder: "",
+      error: "Screenshots could not load."
+    };
+    renderScreenshots();
+  }
+}
+
+async function chooseScreenshotFolderFromHost() {
+  if (!screenshotMeta.canChooseFolder) {
+    setStatus("Screenshot folder is set outside Dumpy.");
+    return;
+  }
+
+  chooseScreenshotFolder.disabled = true;
+  chooseScreenshotFolder.textContent = "Choosing.";
+
+  try {
+    const response = await fetch("/api/screenshots/folder", {
+      method: "POST"
+    });
+
+    if (!response.ok) {
+      throw new Error("Folder choice failed");
+    }
+
+    const payload = await response.json();
+    allScreenshots = payload.screenshots || [];
+    screenshotMeta = payload;
+    renderScreenshots();
+    setStatus("Screenshot folder updated.");
+  } catch {
+    setStatus("Folder choice failed.");
+  } finally {
+    chooseScreenshotFolder.disabled = false;
+    chooseScreenshotFolder.textContent = "Choose folder";
+  }
+}
+
+function enterScreenshotSpace({ pushHistory = false } = {}) {
+  screenshotSpaceActive = true;
+  screenshotsCollapsed = false;
+
+  if (pushHistory && window.location.hash !== "#screenshots") {
+    window.history.pushState({ space: "screenshots" }, "", "#screenshots");
+  }
+
+  renderAppSpace();
+  renderScreenshots();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function enterDumpySpace({ pushHistory = false } = {}) {
+  screenshotSpaceActive = false;
+
+  if (pushHistory && window.location.hash) {
+    window.history.pushState({ space: "dumpy" }, "", `${window.location.pathname}${window.location.search}`);
+  } else if (!pushHistory) {
+    clearHashIfNeeded();
+  }
+
+  renderAppSpace();
+  renderScreenshots();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderAppSpace() {
+  document.body.classList.toggle("is-screenshot-space", screenshotSpaceActive);
+  mascot?.classList.toggle("is-active", !screenshotSpaceActive);
+  screenshotFriend?.classList.toggle("is-active", screenshotSpaceActive);
+  mascot?.setAttribute("aria-pressed", String(!screenshotSpaceActive));
+  screenshotFriend?.setAttribute("aria-pressed", String(screenshotSpaceActive));
+}
+
+function goBackOneStep() {
+  if (!previewOverlay.hidden) {
+    closePreview();
+    return true;
+  }
+
+  if (!confirmOverlay.hidden) {
+    settleConfirm(false);
+    return true;
+  }
+
+  if (!partyCreateOverlay.hidden) {
+    closePartyCreator();
+    return true;
+  }
+
+  if (screenshotSpaceActive) {
+    enterDumpySpace({ pushHistory: false });
+    return true;
+  }
+
+  if (activePartyId) {
+    setActiveParty(null);
+    return true;
+  }
+
+  if (window.history.length > 1) {
+    window.history.back();
+    return true;
+  }
+
+  return false;
+}
+
+function clearHashIfNeeded() {
+  if (window.location.hash) {
+    window.history.replaceState({}, "", `${window.location.pathname}${window.location.search}`);
   }
 }
 
@@ -585,6 +754,136 @@ function renderCollapseState() {
   renderSectionToggle(dumpsToggle, dumpsCollapsed, activePartyId ? "party dumps" : "loose dumps");
 }
 
+function renderScreenshots() {
+  if (!screenshotSection) {
+    return;
+  }
+
+  const enabled = screenshotMeta.enabled !== false;
+  screenshotSection.hidden = !enabled || !screenshotSpaceActive;
+  screenshotFriend.hidden = !enabled;
+
+  if (!enabled) {
+    return;
+  }
+
+  screenshotList.replaceChildren();
+  screenshotList.hidden = screenshotSpaceActive ? false : screenshotsCollapsed;
+  screenshotCount.textContent = allScreenshots.length ? `(${allScreenshots.length})` : "";
+  renderSectionToggle(screenshotToggle, screenshotSpaceActive ? false : screenshotsCollapsed, "screenshots");
+  updateScreenshotFriend();
+  chooseScreenshotFolder.hidden = !screenshotMeta.canChooseFolder;
+  chooseScreenshotFolder.disabled = !screenshotMeta.canChooseFolder;
+
+  if (screenshotMeta.error) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = screenshotMeta.error;
+    screenshotList.append(empty);
+    screenshotFolder.textContent = "Screenshot folder unavailable.";
+    return;
+  }
+
+  screenshotFolder.textContent = screenshotMeta.folder
+    ? `${screenshotMeta.folder}${screenshotMeta.source === "setting" ? "" : ` (${screenshotMeta.source})`}`
+    : "Most recent first.";
+
+  if (!allScreenshots.length) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "Take a screenshot and it will land here.";
+    screenshotList.append(empty);
+    return;
+  }
+
+  for (const screenshot of allScreenshots) {
+    screenshotList.append(renderScreenshot(screenshot));
+  }
+}
+
+function updateScreenshotFriend() {
+  if (!screenshotFriendImage) {
+    return;
+  }
+
+  const latest = allScreenshots[0] || null;
+  screenshotFriend.classList.toggle("has-screenshot", Boolean(latest));
+  screenshotFriendImage.src = latest?.previewHref || "/mascots/dumpy-whoa.svg?v=2";
+  screenshotFriendImage.alt = "";
+
+  if (screenshotFriendBubble) {
+    screenshotFriendBubble.textContent = latest ? "Look at me, Dumpy" : "Screenshots go here";
+  }
+}
+
+function renderScreenshot(screenshot) {
+  const card = document.createElement("li");
+  card.className = "file-card compact-card screenshot-card";
+  card.draggable = true;
+  card.title = "Drag this screenshot into another app or page.";
+  card.addEventListener("dragstart", (event) => startScreenshotDrag(event, screenshot));
+
+  const summaryButton = document.createElement("button");
+  summaryButton.className = "screenshot-summary-button";
+  summaryButton.type = "button";
+  summaryButton.setAttribute("aria-label", `Open ${screenshot.name}`);
+  summaryButton.addEventListener("click", () => openFilePreview(screenshot));
+
+  const thumb = document.createElement("span");
+  thumb.className = "screenshot-thumb";
+
+  const image = document.createElement("img");
+  image.className = "screenshot-thumb-image";
+  image.alt = "";
+  image.loading = "lazy";
+  image.decoding = "async";
+  image.src = screenshot.previewHref || screenshot.href;
+  thumb.append(image);
+
+  const details = document.createElement("span");
+  details.className = "screenshot-details";
+
+  const title = document.createElement("span");
+  title.className = "file-name";
+  title.textContent = screenshot.name;
+
+  const meta = document.createElement("span");
+  meta.className = "file-meta";
+  meta.textContent = `${formatSize(screenshot.size)} · ${formatDate(screenshot.uploadedAt)}`;
+
+  details.append(title, meta);
+  summaryButton.append(thumb, details);
+
+  const actions = document.createElement("div");
+  actions.className = "file-actions compact-actions";
+
+  const open = document.createElement("button");
+  open.className = "quiet-button";
+  open.type = "button";
+  open.textContent = "Open";
+  open.addEventListener("click", () => openFilePreview(screenshot));
+
+  actions.append(open, createCopyImageButton(screenshot));
+
+  if (screenshotMeta.canReveal) {
+    actions.append(createRevealButton(screenshot));
+  }
+
+  actions.append(createDownloadLink(screenshot));
+  card.append(summaryButton, actions);
+  return card;
+}
+
+function startScreenshotDrag(event, screenshot) {
+  const url = absoluteUrl(screenshot.href);
+  const previewUrl = absoluteUrl(screenshot.previewHref || screenshot.href);
+
+  event.dataTransfer.effectAllowed = "copy";
+  event.dataTransfer.setData("text/uri-list", url);
+  event.dataTransfer.setData("text/plain", url);
+  event.dataTransfer.setData("text/html", `<img src="${escapeHtml(previewUrl)}" alt="${escapeHtml(screenshot.name || "Screenshot")}">`);
+}
+
 function renderSectionToggle(button, collapsed, label) {
   button.classList.toggle("is-collapsed", collapsed);
   button.setAttribute("aria-expanded", String(!collapsed));
@@ -687,7 +986,17 @@ function openPreviewShell(title, bodyClass = "preview-body") {
 
 async function openFilePreview(file) {
   openPreviewShell(file.name || "Preview");
-  previewFooter.append(createCopyFileLinkButton(file), createDownloadLink(file), createDeleteButton(file));
+  previewFooter.append(createCopyFileLinkButton(file), createDownloadLink(file));
+
+  if (file.kind === "screenshot") {
+    previewFooter.prepend(createCopyImageButton(file));
+
+    if (screenshotMeta.canReveal) {
+      previewFooter.append(createRevealButton(file));
+    }
+  } else {
+    previewFooter.append(createDeleteButton(file));
+  }
 
   const previewHref = file.previewHref || file.href;
   const mimeType = file.mimeType || "";
@@ -1133,6 +1442,18 @@ function createCopyTextButton(label, value) {
   return button;
 }
 
+function createCopyImageButton(screenshot) {
+  const button = createIconButton("Copy image", copyIconSvg());
+  button.addEventListener("click", () => copyScreenshotImage(screenshot));
+  return button;
+}
+
+function createRevealButton(screenshot) {
+  const button = createIconButton("Reveal in Finder", folderIconSvg());
+  button.addEventListener("click", () => revealScreenshot(screenshot));
+  return button;
+}
+
 function createCopyFileLinkButton(file) {
   const button = createIconButton("Copy file link", copyIconSvg());
   button.addEventListener("click", () => copyLink(file.href));
@@ -1163,6 +1484,15 @@ function xIconSvg() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M6 6l12 12"></path>
       <path d="M18 6L6 18"></path>
+    </svg>
+  `;
+}
+
+function folderIconSvg() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 6h6l2 3h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+      <path d="M3 10h18"></path>
     </svg>
   `;
 }
@@ -1317,13 +1647,55 @@ function writeCollapsedState(key, value) {
 }
 
 async function copyLink(path) {
-  const url = new URL(path, window.location.href).href;
+  const url = absoluteUrl(path);
 
   try {
     await navigator.clipboard.writeText(url);
     setStatus("Link copied.");
   } catch {
     setStatus(url);
+  }
+}
+
+async function copyScreenshotImage(screenshot) {
+  try {
+    if (!window.ClipboardItem || !navigator.clipboard?.write) {
+      await copyLink(screenshot.href);
+      return;
+    }
+
+    const response = await fetch(screenshot.previewHref || screenshot.href, { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error("Image fetch failed");
+    }
+
+    const blob = await response.blob();
+    const type = blob.type || screenshot.mimeType || "image/png";
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        [type]: blob
+      })
+    ]);
+    setStatus("Screenshot copied.");
+  } catch {
+    await copyLink(screenshot.href);
+  }
+}
+
+async function revealScreenshot(screenshot) {
+  try {
+    const response = await fetch(`/api/screenshots/${encodeURIComponent(screenshot.id)}/reveal`, {
+      method: "POST"
+    });
+
+    if (!response.ok) {
+      throw new Error("Reveal failed");
+    }
+
+    setStatus("Revealed in Finder.");
+  } catch {
+    setStatus("Could not reveal screenshot.");
   }
 }
 
@@ -1351,6 +1723,18 @@ function formatSize(bytes) {
   }
 
   return `${size >= 10 || unitIndex === 0 ? Math.round(size) : size.toFixed(1)} ${units[unitIndex]}`;
+}
+
+function absoluteUrl(path) {
+  return new URL(path, window.location.href).href;
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function formatDate(value) {

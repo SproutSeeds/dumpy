@@ -47,6 +47,7 @@ textarea {
 }
 
 .shell {
+  position: relative;
   width: min(100%, 920px);
   margin: 0 auto;
   padding: 24px 16px 44px;
@@ -55,8 +56,91 @@ textarea {
 .mast {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 18px;
   margin-bottom: 22px;
+}
+
+.space-tab {
+  appearance: none;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.space-tab.is-active {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.space-tab:focus-visible {
+  outline: 3px solid rgba(31, 122, 131, 0.25);
+  outline-offset: 3px;
+}
+
+.screenshot-friend {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  padding: 3px;
+}
+
+.screenshot-bubble {
+  position: relative;
+  max-width: 138px;
+  padding: 7px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.15;
+  text-align: left;
+  box-shadow: 3px 3px 0 rgba(23, 32, 38, 0.18);
+}
+
+.screenshot-bubble::after {
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  width: 12px;
+  height: 12px;
+  border-top: 2px solid var(--ink);
+  border-right: 2px solid var(--ink);
+  background: var(--surface);
+  content: "";
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.screenshot-frame {
+  display: block;
+  width: 96px;
+  height: 72px;
+  padding: 5px;
+  overflow: hidden;
+  border: 3px solid #6f5213;
+  border-radius: 6px;
+  background: #fff8dc;
+  box-shadow: 0 6px 14px rgba(23, 32, 38, 0.16);
+  transform: rotate(2deg);
+}
+
+.screenshot-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 3px;
+  background: var(--surface);
+}
+
+.screenshot-friend.has-screenshot .screenshot-frame img {
+  object-fit: cover;
 }
 
 .mascot {
@@ -64,12 +148,9 @@ textarea {
   position: relative;
   width: 156px;
   height: 76px;
-  border: 0;
   padding: 0;
   flex: 0 0 156px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
+  border-color: transparent;
 }
 
 .mascot,
@@ -81,7 +162,6 @@ textarea {
 .mascot:focus-visible {
   outline: 3px solid rgba(31, 122, 131, 0.25);
   outline-offset: 3px;
-  border-radius: 8px;
 }
 
 .mark {
@@ -93,7 +173,7 @@ textarea {
   forced-color-adjust: none;
   filter: none !important;
   mix-blend-mode: normal;
-  margin-top: 9px;
+  margin: 0;
   image-rendering: auto;
 }
 
@@ -833,6 +913,81 @@ h1 {
   margin-top: 18px;
 }
 
+.screenshot-section {
+  margin-top: 18px;
+  scroll-margin-top: 16px;
+}
+
+body.is-screenshot-space .shell {
+  width: min(100%, 760px);
+  padding-top: 24px;
+}
+
+body.is-screenshot-space .quick-dump,
+body.is-screenshot-space .party-tools,
+body.is-screenshot-space .drop-zone,
+body.is-screenshot-space .party-section,
+body.is-screenshot-space .toolbar,
+body.is-screenshot-space .dumps-section,
+body.is-screenshot-space .storage-footer,
+body.is-screenshot-space .deleted-space {
+  display: none;
+}
+
+body.is-screenshot-space .screenshot-section {
+  margin-top: 0;
+}
+
+body.is-screenshot-space .mast {
+  justify-content: space-between;
+}
+
+body.is-screenshot-space .mast h1 {
+  display: none;
+}
+
+body.is-screenshot-space .screenshot-section .section-head {
+  display: none;
+}
+
+body.is-screenshot-space .screenshot-card {
+  grid-template-columns: 1fr;
+}
+
+body.is-screenshot-space .screenshot-summary-button {
+  grid-template-columns: 104px minmax(0, 1fr);
+}
+
+body.is-screenshot-space .screenshot-thumb {
+  width: 104px;
+}
+
+.screenshot-tools {
+  display: none;
+}
+
+body.is-screenshot-space .screenshot-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.screenshot-tools p {
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.screenshot-tool-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .section-head {
   display: flex;
   flex-wrap: wrap;
@@ -856,6 +1011,7 @@ h1 {
 .section-head p {
   margin: 0;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .section-actions {
@@ -947,6 +1103,61 @@ h1 {
   border-color: var(--teal);
   border-left-color: var(--teal);
   background: #f8fcfb;
+}
+
+.screenshot-card {
+  border-left-color: var(--teal-dark);
+}
+
+.screenshot-card[draggable="true"] {
+  cursor: grab;
+}
+
+.screenshot-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.screenshot-summary-button {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.screenshot-summary-button:focus-visible {
+  outline: 3px solid rgba(31, 122, 131, 0.22);
+  outline-offset: 4px;
+}
+
+.screenshot-thumb {
+  display: block;
+  width: 76px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f5f2ea;
+}
+
+.screenshot-thumb-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.screenshot-details {
+  display: block;
+  min-width: 0;
 }
 
 .list-title {
@@ -1410,6 +1621,69 @@ h1 {
   margin: 14px 0 0;
   color: var(--muted);
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .mast {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .mast h1 {
+    order: 3;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 1.9rem;
+    text-align: center;
+  }
+
+  .mascot {
+    flex-basis: 132px;
+    width: 132px;
+  }
+
+  .screenshot-friend {
+    gap: 8px;
+  }
+
+  .screenshot-bubble {
+    max-width: 108px;
+    font-size: 0.74rem;
+  }
+
+  .screenshot-frame {
+    width: 74px;
+    height: 58px;
+  }
+
+  body.is-screenshot-space .mast h1 {
+    display: none;
+  }
+
+  .screenshot-card {
+    grid-template-columns: 1fr;
+  }
+
+  .screenshot-card .compact-actions {
+    flex-wrap: wrap;
+  }
+
+  body.is-screenshot-space .screenshot-tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .screenshot-tool-actions {
+    justify-content: flex-end;
+  }
+
+  body.is-screenshot-space .screenshot-summary-button {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+
+  body.is-screenshot-space .screenshot-thumb {
+    width: 88px;
+  }
 }
 
 @media (min-width: 720px) {

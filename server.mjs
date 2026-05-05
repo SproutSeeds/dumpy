@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 
+import { execFile } from "node:child_process";
 import { createReadStream, createWriteStream } from "node:fs";
-import { cp, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(rootDir, "public");
 const packageInfo = JSON.parse(await readFile(path.join(rootDir, "package.json"), "utf8"));
 const appVersion = typeof packageInfo.version === "string" ? packageInfo.version : "0.0.0";
 const cliOptions = parseCliOptions(process.argv.slice(2));
+const execFileAsync = promisify(execFile);
 
 if (cliOptions.help) {
   printHelp();
@@ -25,8 +28,31 @@ const defaultDataDir = getDefaultDataDir();
 const dataDir = explicitDataDir ? path.resolve(explicitDataDir) : defaultDataDir;
 const uploadDir = path.join(dataDir, "uploads");
 const indexFile = path.join(dataDir, "files.json");
+const settingsFile = path.join(dataDir, "settings.json");
 const legacyDataDir = path.join(process.cwd(), "data");
 const deletedRetentionMs = 30 * 24 * 60 * 60 * 1000;
+const explicitScreenshotDir = cliOptions.screenshotDir || process.env.DUMPY_SCREENSHOT_DIR || "";
+const savedSettings = await readSettings();
+const savedScreenshotDir = normalizeSettingsScreenshotDir(savedSettings.screenshotDir);
+const screenshotsEnabled =
+  cliOptions.screenshots &&
+  !isDisabledEnv(process.env.DUMPY_SCREENSHOTS) &&
+  (process.platform === "darwin" || Boolean(explicitScreenshotDir || savedScreenshotDir) || isEnabledEnv(process.env.DUMPY_SCREENSHOTS));
+const screenshotShortcutsEnabled = cliOptions.screenshotShortcuts && !isDisabledEnv(process.env.DUMPY_SCREENSHOT_SHORTCUTS);
+const screenshotDirLocked = Boolean(explicitScreenshotDir);
+let screenshotDir = explicitScreenshotDir ? path.resolve(expandHomePath(explicitScreenshotDir)) : savedScreenshotDir || getDefaultScreenshotDir();
+const screenshotInfo = {
+  enabled: screenshotsEnabled,
+  folder: screenshotDir,
+  platform: process.platform,
+  folderReady: false,
+  configured: false,
+  canConfigureShortcut: process.platform === "darwin",
+  canChooseFolder: screenshotsEnabled && process.platform === "darwin" && !screenshotDirLocked,
+  canReveal: screenshotsEnabled && process.platform === "darwin",
+  shortcutConfigurationEnabled: screenshotShortcutsEnabled,
+  source: cliOptions.screenshotDir ? "cli" : process.env.DUMPY_SCREENSHOT_DIR ? "env" : savedScreenshotDir ? "setting" : "default"
+};
 
 const host = process.env.DUMPY_HOST || "127.0.0.1";
 const port = Number.parseInt(process.env.DUMPY_PORT || "7331", 10);
@@ -41,6 +67,7 @@ let storeQueue = Promise.resolve();
 
 await migrateLegacyDataIfNeeded();
 await mkdir(uploadDir, { recursive: true });
+await setupScreenshotsIfNeeded();
 await purgeExpiredDeletedItems();
 
 const server = createServer(async (request, response) => {
@@ -54,6 +81,23 @@ const server = createServer(async (request, response) => {
 
     if (request.method === "GET" && url.pathname === "/api/files") {
       await handleList(response);
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/screenshots") {
+      await handleScreenshotList(response);
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/screenshots/folder") {
+      await handleChooseScreenshotFolder(response);
+      return;
+    }
+
+    const screenshotActionRoute = url.pathname.match(/^\/api\/screenshots\/([^/]+)\/(reveal)$/);
+
+    if (screenshotActionRoute && request.method === "POST") {
+      await handleScreenshotAction(response, screenshotActionRoute[1], screenshotActionRoute[2]);
       return;
     }
 
@@ -121,6 +165,16 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    if ((request.method === "GET" || request.method === "HEAD") && url.pathname.startsWith("/screenshot-preview/")) {
+      await handleScreenshotFileResponse(request, response, url, "inline");
+      return;
+    }
+
+    if ((request.method === "GET" || request.method === "HEAD") && url.pathname.startsWith("/screenshots/")) {
+      await handleScreenshotFileResponse(request, response, url, "attachment");
+      return;
+    }
+
     if ((request.method === "GET" || request.method === "HEAD") && url.pathname.startsWith("/files/")) {
       await handleFileResponse(request, response, url, "attachment");
       return;
@@ -144,6 +198,9 @@ const server = createServer(async (request, response) => {
 server.listen(port, host, () => {
   console.log(`Dumpy is listening on http://${host}:${port}`);
   console.log(`Dumps live in ${dataDir}`);
+  if (screenshotInfo.enabled) {
+    console.log(`Screenshots live in ${screenshotInfo.folder}`);
+  }
 });
 
 function handleHealth(request, response) {
@@ -191,6 +248,76 @@ async function handleList(response) {
     deletedParties,
     storage: storageInfo
   });
+}
+
+async function handleScreenshotList(response) {
+  await sendScreenshotPayload(response, 200);
+}
+
+async function sendScreenshotPayload(response, status) {
+  const screenshots = screenshotsEnabled ? await listScreenshots() : [];
+
+  sendJson(response, status, {
+    screenshots,
+    folder: screenshotInfo.folder,
+    enabled: screenshotInfo.enabled,
+    folderReady: screenshotInfo.folderReady,
+    configured: screenshotInfo.configured,
+    canConfigureShortcut: screenshotInfo.canConfigureShortcut,
+    canChooseFolder: screenshotInfo.canChooseFolder,
+    canReveal: screenshotInfo.canReveal,
+    shortcutConfigurationEnabled: screenshotInfo.shortcutConfigurationEnabled,
+    source: screenshotInfo.source,
+    error: screenshotInfo.error || ""
+  });
+}
+
+async function handleChooseScreenshotFolder(response) {
+  if (!screenshotsEnabled || process.platform !== "darwin") {
+    sendJson(response, 501, { error: "Screenshot folder picking is only available on macOS." });
+    return;
+  }
+
+  if (screenshotDirLocked) {
+    sendJson(response, 409, { error: "Screenshot folder is set by CLI or environment." });
+    return;
+  }
+
+  const picked = await chooseMacScreenshotFolder();
+
+  if (!picked) {
+    await sendScreenshotPayload(response, 200);
+    return;
+  }
+
+  await setScreenshotFolder(picked, { source: "setting", persist: true });
+  await sendScreenshotPayload(response, 200);
+}
+
+async function handleScreenshotAction(response, id, action) {
+  if (action === "reveal") {
+    await handleRevealScreenshot(response, id);
+    return;
+  }
+
+  sendJson(response, 404, { error: "Screenshot action not found" });
+}
+
+async function handleRevealScreenshot(response, id) {
+  if (!screenshotsEnabled || process.platform !== "darwin") {
+    sendJson(response, 501, { error: "Reveal is only available on macOS." });
+    return;
+  }
+
+  const filePath = await screenshotFilePathForId(id);
+
+  if (!filePath) {
+    sendJson(response, 404, { error: "Screenshot not found" });
+    return;
+  }
+
+  await execFileAsync("/usr/bin/open", ["-R", filePath], { timeout: 5000 });
+  sendJson(response, 200, { ok: true });
 }
 
 async function handleUpload(request, response, url) {
@@ -540,6 +667,43 @@ async function handleFileResponse(request, response, url, disposition) {
   createReadStream(storedPath).pipe(response);
 }
 
+async function handleScreenshotFileResponse(request, response, url, disposition) {
+  if (!screenshotsEnabled) {
+    sendJson(response, 404, { error: "Screenshots are off." });
+    return;
+  }
+
+  const name = screenshotNameFromUrl(url);
+
+  if (!name) {
+    sendJson(response, 404, { error: "Screenshot not found" });
+    return;
+  }
+
+  const filePath = await screenshotFilePathForName(name);
+
+  if (!filePath) {
+    sendJson(response, 404, { error: "Screenshot not found" });
+    return;
+  }
+
+  const savedStat = await stat(filePath);
+
+  response.writeHead(200, {
+    "Content-Type": contentTypeFor(filePath),
+    "Content-Length": savedStat.size,
+    "Content-Disposition": contentDisposition(name, disposition),
+    "Cache-Control": "private, max-age=0, must-revalidate"
+  });
+
+  if (request.method === "HEAD") {
+    response.end();
+    return;
+  }
+
+  createReadStream(filePath).pipe(response);
+}
+
 async function serveStatic(request, response, url) {
   const requestPath = url.pathname === "/" ? "/index.html" : url.pathname;
   const decodedPath = decodeURIComponent(requestPath).replace(/^\/+/, "");
@@ -651,6 +815,219 @@ async function purgeExpiredDeletedItems() {
 async function removeStoredFileIfNeeded(item) {
   if (isFileItem(item)) {
     await rm(path.join(uploadDir, item.id), { force: true });
+  }
+}
+
+async function readSettings() {
+  try {
+    const raw = await readFile(settingsFile, "utf8");
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return {};
+    }
+
+    throw error;
+  }
+}
+
+async function writeSettings(settings) {
+  await mkdir(dataDir, { recursive: true });
+  const tmpFile = `${settingsFile}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(tmpFile, `${JSON.stringify(settings, null, 2)}\n`);
+  await rename(tmpFile, settingsFile);
+}
+
+async function setupScreenshotsIfNeeded() {
+  if (!screenshotsEnabled) {
+    return;
+  }
+
+  await setScreenshotFolder(screenshotDir, { source: screenshotInfo.source, persist: false });
+}
+
+async function setScreenshotFolder(folder, { source = "setting", persist = false } = {}) {
+  const nextFolder = path.resolve(expandHomePath(folder));
+  screenshotInfo.error = "";
+  screenshotInfo.folderReady = false;
+  screenshotInfo.configured = false;
+
+  try {
+    await mkdir(nextFolder, { recursive: true });
+    screenshotDir = nextFolder;
+    screenshotInfo.folder = screenshotDir;
+    screenshotInfo.source = source;
+    screenshotInfo.folderReady = true;
+  } catch (error) {
+    screenshotInfo.error = "Could not create screenshot folder.";
+    console.warn(`Dumpy could not create screenshot folder at ${nextFolder}: ${error.message}`);
+    return;
+  }
+
+  if (persist) {
+    await writeSettings({
+      ...savedSettings,
+      screenshotDir
+    });
+    savedSettings.screenshotDir = screenshotDir;
+  }
+
+  await configureMacScreenshotLocationIfNeeded();
+}
+
+async function configureMacScreenshotLocationIfNeeded() {
+  if (process.platform !== "darwin" || !screenshotShortcutsEnabled) {
+    return;
+  }
+
+  try {
+    const currentLocation = await readMacScreenshotLocation();
+    const currentPath = path.resolve(currentLocation || path.join(os.homedir(), "Desktop"));
+    const targetPath = path.resolve(screenshotDir);
+
+    if (currentPath !== targetPath) {
+      await execFileAsync("/usr/bin/defaults", ["write", "com.apple.screencapture", "location", targetPath], {
+        timeout: 5000
+      });
+      await execFileAsync("/usr/bin/killall", ["SystemUIServer"], { timeout: 5000 }).catch(() => {});
+    }
+
+    screenshotInfo.configured = true;
+  } catch (error) {
+    screenshotInfo.error = "Could not point macOS screenshot shortcuts at the folder.";
+    console.warn(`Dumpy could not configure macOS screenshots: ${error.message}`);
+  }
+}
+
+async function chooseMacScreenshotFolder() {
+  const script = [
+    `set pickedFolder to choose folder with prompt ${appleScriptString("Choose the folder Dumpy should use for screenshots.")} default location POSIX file ${appleScriptString(screenshotDir)}`,
+    "POSIX path of pickedFolder"
+  ].join("\n");
+
+  try {
+    const { stdout } = await execFileAsync("/usr/bin/osascript", ["-e", script], { timeout: 120000 });
+    return stdout.trim();
+  } catch (error) {
+    if (String(error.message || "").includes("-128") || String(error.stderr || "").includes("User canceled")) {
+      return "";
+    }
+
+    throw error;
+  }
+}
+
+async function readMacScreenshotLocation() {
+  try {
+    const { stdout } = await execFileAsync("/usr/bin/defaults", ["read", "com.apple.screencapture", "location"], {
+      timeout: 5000
+    });
+    return expandHomePath(stdout.trim());
+  } catch {
+    return path.join(os.homedir(), "Desktop");
+  }
+}
+
+async function listScreenshots() {
+  let entries;
+
+  try {
+    entries = await readdir(screenshotDir, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return [];
+    }
+
+    throw error;
+  }
+
+  const screenshots = [];
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !isScreenshotFile(entry.name)) {
+      continue;
+    }
+
+    try {
+      const fileStat = await stat(path.join(screenshotDir, entry.name));
+      screenshots.push(toPublicScreenshot(entry.name, fileStat));
+    } catch {
+      // A screenshot may still be writing or may have just moved away.
+    }
+  }
+
+  return screenshots.sort((left, right) => new Date(right.uploadedAt).getTime() - new Date(left.uploadedAt).getTime());
+}
+
+function toPublicScreenshot(name, fileStat) {
+  const id = screenshotIdForName(name);
+
+  return {
+    id,
+    kind: "screenshot",
+    name,
+    size: fileStat.size,
+    mimeType: contentTypeFor(name).split(";")[0],
+    uploadedAt: fileStat.mtime.toISOString(),
+    href: `/screenshots/${encodeURIComponent(id)}/${encodeURIComponent(name)}`,
+    previewHref: `/screenshot-preview/${encodeURIComponent(id)}/${encodeURIComponent(name)}`
+  };
+}
+
+function isScreenshotFile(name) {
+  return /\.(?:png|jpe?g|gif|webp|avif|heic|heif|tiff?)$/i.test(name);
+}
+
+function screenshotIdForName(name) {
+  return Buffer.from(name, "utf8").toString("base64url");
+}
+
+function screenshotNameFromUrl(url) {
+  const [, , id] = url.pathname.split("/");
+  return screenshotNameFromId(id);
+}
+
+function screenshotNameFromId(id) {
+  if (!id) {
+    return "";
+  }
+
+  try {
+    const name = Buffer.from(decodeURIComponent(id), "base64url").toString("utf8");
+    const normalized = normalizeFilename(name);
+
+    if (!name || name !== normalized || name !== path.basename(name)) {
+      return "";
+    }
+
+    return name;
+  } catch {
+    return "";
+  }
+}
+
+async function screenshotFilePathForId(id) {
+  return screenshotFilePathForName(screenshotNameFromId(id));
+}
+
+async function screenshotFilePathForName(name) {
+  if (!name || !isScreenshotFile(name)) {
+    return "";
+  }
+
+  const filePath = path.resolve(screenshotDir, name);
+  const relativePath = path.relative(screenshotDir, filePath);
+
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    return "";
+  }
+
+  try {
+    const savedStat = await stat(filePath);
+    return savedStat.isFile() ? filePath : "";
+  } catch {
+    return "";
   }
 }
 
@@ -863,6 +1240,16 @@ function normalizeOptionalId(value) {
   return typeof value === "string" && /^[a-z0-9-]{8,80}$/i.test(value) ? value : null;
 }
 
+function normalizeSettingsScreenshotDir(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+
+  if (!raw) {
+    return "";
+  }
+
+  return path.resolve(expandHomePath(raw));
+}
+
 function cleanHeaderValue(value) {
   if (Array.isArray(value)) {
     return value[0] || "";
@@ -922,16 +1309,24 @@ function encodeRfc5987(value) {
 function contentTypeFor(filePath) {
   const extension = path.extname(filePath).toLowerCase();
   const types = {
+    ".avif": "image/avif",
     ".css": "text/css; charset=utf-8",
     ".gif": "image/gif",
+    ".heic": "image/heic",
+    ".heif": "image/heif",
     ".html": "text/html; charset=utf-8",
+    ".jpeg": "image/jpeg",
+    ".jpg": "image/jpeg",
     ".js": "text/javascript; charset=utf-8",
     ".json": "application/json; charset=utf-8",
     ".mp4": "video/mp4",
     ".png": "image/png",
     ".svg": "image/svg+xml; charset=utf-8",
+    ".tif": "image/tiff",
+    ".tiff": "image/tiff",
     ".txt": "text/plain; charset=utf-8",
-    ".webmanifest": "application/manifest+json; charset=utf-8"
+    ".webmanifest": "application/manifest+json; charset=utf-8",
+    ".webp": "image/webp"
   };
 
   return types[extension] || "application/octet-stream";
@@ -962,6 +1357,9 @@ function httpError(status, message) {
 function parseCliOptions(args) {
   const options = {
     dataDir: "",
+    screenshotDir: "",
+    screenshots: true,
+    screenshotShortcuts: true,
     help: false
   };
 
@@ -981,6 +1379,27 @@ function parseCliOptions(args) {
 
     if (arg.startsWith("--data-dir=")) {
       options.dataDir = arg.slice("--data-dir=".length);
+      continue;
+    }
+
+    if (arg === "--screenshots-dir") {
+      options.screenshotDir = args[index + 1] || "";
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--screenshots-dir=")) {
+      options.screenshotDir = arg.slice("--screenshots-dir=".length);
+      continue;
+    }
+
+    if (arg === "--no-screenshots") {
+      options.screenshots = false;
+      continue;
+    }
+
+    if (arg === "--no-screenshot-shortcuts") {
+      options.screenshotShortcuts = false;
     }
   }
 
@@ -991,16 +1410,35 @@ function printHelp() {
   console.log(`Dumpy
 
 Usage:
-  dumpy-files [--data-dir PATH]
+  dumpy-files [--data-dir PATH] [--screenshots-dir PATH] [--no-screenshots] [--no-screenshot-shortcuts]
 
 Options:
   --data-dir PATH  Store Dumpy data in PATH instead of the OS app-data folder.
+  --screenshots-dir PATH
+                   Read screenshots from PATH instead of ~/Desktop/Screenshots.
+  --no-screenshots Disable the screenshot folder integration.
+  --no-screenshot-shortcuts
+                   Connect the screenshot folder without updating macOS shortcuts.
 
 Environment:
   DUMPY_DATA_DIR   Same as --data-dir.
+  DUMPY_SCREENSHOT_DIR
+                   Same as --screenshots-dir.
+  DUMPY_SCREENSHOTS=0
+                   Same as --no-screenshots.
+  DUMPY_SCREENSHOT_SHORTCUTS=0
+                   Same as --no-screenshot-shortcuts.
   DUMPY_HOST       Host to bind. Default: 127.0.0.1
   DUMPY_PORT       Port to bind. Default: 7331
 `);
+}
+
+function isDisabledEnv(value) {
+  return ["0", "false", "no", "off"].includes(String(value || "").trim().toLowerCase());
+}
+
+function isEnabledEnv(value) {
+  return ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
 }
 
 function getDefaultDataDir() {
@@ -1013,6 +1451,26 @@ function getDefaultDataDir() {
   }
 
   return path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share"), "dumpy");
+}
+
+function getDefaultScreenshotDir() {
+  return path.join(os.homedir(), "Desktop", "Screenshots");
+}
+
+function expandHomePath(value) {
+  if (value === "~") {
+    return os.homedir();
+  }
+
+  if (value.startsWith("~/")) {
+    return path.join(os.homedir(), value.slice(2));
+  }
+
+  return value;
+}
+
+function appleScriptString(value) {
+  return `"${String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 async function migrateLegacyDataIfNeeded() {
