@@ -891,11 +891,16 @@ function startScreenshotDrag(event, screenshot) {
   const cachedBlob = screenshotBlobCache.get(screenshot.id);
   const fileName = safeDragFilename(screenshot.name || "screenshot.png");
   const mimeType = cachedBlob?.type || screenshot.mimeType || "image/png";
+  const localPath = screenshot.localPath || "";
+  const shellPath = screenshot.shellPath || (localPath ? shellQuotePath(localPath) : url);
+  const fileUrl = localPath ? fileUrlForPath(localPath) : url;
 
   event.dataTransfer.effectAllowed = "copy";
-  event.dataTransfer.setData("text/uri-list", url);
-  event.dataTransfer.setData("text/plain", url);
+  event.dataTransfer.setData("text/uri-list", fileUrl);
+  event.dataTransfer.setData("text/plain", shellPath);
   event.dataTransfer.setData("text/html", `<img src="${escapeHtml(previewUrl)}" alt="${escapeHtml(screenshot.name || "Screenshot")}">`);
+  event.dataTransfer.setData("application/x-dumpy-local-path", localPath);
+  event.dataTransfer.setData("application/x-dumpy-shell-path", shellPath);
   event.dataTransfer.setData("DownloadURL", `${mimeType}:${fileName}:${url}`);
 
   if (cachedBlob) {
@@ -912,6 +917,14 @@ function startScreenshotDrag(event, screenshot) {
 
 function safeDragFilename(name) {
   return String(name).replace(/[\\/:*?"<>|\r\n]+/g, "-").trim() || "screenshot.png";
+}
+
+function shellQuotePath(value) {
+  return `'${String(value).replace(/'/g, "'\\''")}'`;
+}
+
+function fileUrlForPath(value) {
+  return `file://${String(value).split("/").map(encodeURIComponent).join("/")}`;
 }
 
 function renderSectionToggle(button, collapsed, label) {

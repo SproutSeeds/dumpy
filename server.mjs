@@ -962,6 +962,7 @@ async function listScreenshots() {
 
 function toPublicScreenshot(name, fileStat) {
   const id = screenshotIdForName(name);
+  const localPath = path.join(screenshotDir, name);
 
   return {
     id,
@@ -970,6 +971,8 @@ function toPublicScreenshot(name, fileStat) {
     size: fileStat.size,
     mimeType: contentTypeFor(name).split(";")[0],
     uploadedAt: fileStat.mtime.toISOString(),
+    localPath,
+    shellPath: shellQuotePath(localPath),
     href: `/screenshots/${encodeURIComponent(id)}/${encodeURIComponent(name)}`,
     previewHref: `/screenshot-preview/${encodeURIComponent(id)}/${encodeURIComponent(name)}`
   };
@@ -981,6 +984,10 @@ function isScreenshotFile(name) {
 
 function screenshotIdForName(name) {
   return Buffer.from(name, "utf8").toString("base64url");
+}
+
+function shellQuotePath(value) {
+  return `'${String(value).replace(/'/g, "'\\''")}'`;
 }
 
 function screenshotNameFromUrl(url) {
